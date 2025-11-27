@@ -22,6 +22,7 @@ const Admin = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [maxCapacityLocal, setMaxCapacityLocal] = useState<number>(16);
   const [calendarMode, setCalendarMode] = useState<"accommodation" | "boma">("accommodation");
+  const [selectedBoma, setSelectedBoma] = useState<"Argyle" | "Platform" | "Beacon">("Argyle");
 
   // Queries
   const settings = useQuery(api.availability.getSettings, {});
@@ -104,58 +105,174 @@ const Admin = () => {
     return name.toLowerCase().includes(searchTerm.toLowerCase()) || email.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
+  const accommodationBookings = useMemo(() => {
+    return filteredBookings.filter(b => (!b.type || b.type === "bungalow"));
+  }, [filteredBookings]);
+
+  const bomaBookings = useMemo(() => {
+    return filteredBookings.filter(b => (b.type === "boma" || (b.bomaDates && b.bomaDates.length > 0)));
+  }, [filteredBookings]);
+
   const handleApprove = async (id: Id<"bookings">) => {
-    await approve({ id, status: "approved", adminKey: adminKey ?? undefined });
-    toast.success("Booking approved successfully");
+    try {
+      if (isConfigured && !adminKey) {
+        toast.error("Please enter the admin key");
+        return;
+      }
+      await approve({ id, status: "approved", adminKey: adminKey ?? undefined });
+      toast.success("Booking approved successfully");
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.message || error.toString();
+      if (msg.includes("Forbidden")) {
+        toast.error("Invalid Admin Key. Please re-enter your key.");
+      } else {
+        toast.error("Failed to approve booking: " + msg);
+      }
+    }
   };
 
   const handleReject = async (id: Id<"bookings">) => {
-    await approve({ id, status: "rejected", adminKey: adminKey ?? undefined });
-    toast.success("Booking rejected");
+    try {
+      if (isConfigured && !adminKey) {
+        toast.error("Please enter the admin key");
+        return;
+      }
+      await approve({ id, status: "rejected", adminKey: adminKey ?? undefined });
+      toast.success("Booking rejected");
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.message || error.toString();
+      if (msg.includes("Forbidden")) {
+        toast.error("Invalid Admin Key. Please re-enter your key.");
+      } else {
+        toast.error("Failed to reject booking: " + msg);
+      }
+    }
   };
 
   const handleRequestPayment = async (id: Id<"bookings">) => {
-    await approve({ id, status: "payment_requested", adminKey: adminKey ?? undefined });
-    toast.success("Payment request sent");
+    try {
+      if (isConfigured && !adminKey) {
+        toast.error("Please enter the admin key");
+        return;
+      }
+      await approve({ id, status: "payment_requested", adminKey: adminKey ?? undefined });
+      toast.success("Payment request sent");
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.message || error.toString();
+      if (msg.includes("Forbidden")) {
+        toast.error("Invalid Admin Key. Please re-enter your key.");
+      } else {
+        toast.error("Failed to request payment: " + msg);
+      }
+    }
   };
 
   const handlePaymentReceived = async (id: Id<"bookings">) => {
-    await approve({ id, status: "payment_received", adminKey: adminKey ?? undefined });
-    toast.success("Payment received marked");
+    try {
+      if (isConfigured && !adminKey) {
+        toast.error("Please enter the admin key");
+        return;
+      }
+      await approve({ id, status: "payment_received", adminKey: adminKey ?? undefined });
+      toast.success("Payment received marked");
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.message || error.toString();
+      if (msg.includes("Forbidden")) {
+        toast.error("Invalid Admin Key. Please re-enter your key.");
+      } else {
+        toast.error("Failed to mark payment received: " + msg);
+      }
+    }
   };
 
   const handleConfirm = async (id: Id<"bookings">) => {
-    await approve({ id, status: "confirmed", adminKey: adminKey ?? undefined });
-    toast.success("Booking confirmed! Dates are now blocked.");
+    try {
+      if (isConfigured && !adminKey) {
+        toast.error("Please enter the admin key");
+        return;
+      }
+      await approve({ id, status: "confirmed", adminKey: adminKey ?? undefined });
+      toast.success("Booking confirmed! Dates are now blocked.");
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.message || error.toString();
+      if (msg.includes("Forbidden")) {
+        toast.error("Invalid Admin Key. Please re-enter your key.");
+      } else {
+        toast.error("Failed to confirm booking: " + msg);
+      }
+    }
   };
 
   const handleCompleteStay = async (id: Id<"bookings">) => {
-    await completeStay({ id, adminKey: adminKey ?? undefined });
-    toast.success("Stay marked as completed. 1-year cooldown started.");
+    try {
+      if (isConfigured && !adminKey) {
+        toast.error("Please enter the admin key");
+        return;
+      }
+      await completeStay({ id, adminKey: adminKey ?? undefined });
+      toast.success("Stay marked as completed. 1-year cooldown started.");
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.message || error.toString();
+      if (msg.includes("Forbidden")) {
+        toast.error("Invalid Admin Key. Please re-enter your key.");
+      } else {
+        toast.error("Failed to complete stay: " + msg);
+      }
+    }
   };
 
   const handleDelete = async (id: Id<"bookings">) => {
-    await removeBooking({ id, adminKey: adminKey ?? undefined });
-    toast.success("Booking deleted");
+    try {
+      if (isConfigured && !adminKey) {
+        toast.error("Please enter the admin key");
+        return;
+      }
+      await removeBooking({ id, adminKey: adminKey ?? undefined });
+      toast.success("Booking deleted");
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.message || error.toString();
+      if (msg.includes("Forbidden")) {
+        toast.error("Invalid Admin Key. Please re-enter your key.");
+      } else {
+        toast.error("Failed to delete booking: " + msg);
+      }
+    }
   };
 
-const handleEditBooking = (booking: Doc<"bookings">) => {
+  const handleEditBooking = (booking: Doc<"bookings">) => {
     setSelectedBooking(booking);
     setIsEditDialogOpen(true);
   };
 
   const handleSaveEdit = async () => {
-    if (selectedBooking) {
-      await updateBooking({
-        id: selectedBooking._id,
-        checkIn: selectedBooking.checkIn,
-        checkOut: selectedBooking.checkOut,
-        guests: selectedBooking.guests,
-        notes: selectedBooking.notes,
-        adminKey: adminKey ?? undefined,
-      });
-      toast.success("Booking updated successfully");
-      setIsEditDialogOpen(false);
+    try {
+      if (selectedBooking) {
+        await updateBooking({
+          id: selectedBooking._id,
+          checkIn: selectedBooking.checkIn,
+          checkOut: selectedBooking.checkOut,
+          guests: selectedBooking.guests,
+          notes: selectedBooking.notes,
+          adminKey: adminKey ?? undefined,
+        });
+        toast.success("Booking updated successfully");
+        setIsEditDialogOpen(false);
+      }
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.message || error.toString();
+      if (msg.includes("Forbidden")) {
+        toast.error("Invalid Admin Key. Please re-enter your key.");
+      } else {
+        toast.error("Failed to update booking: " + msg);
+      }
     }
   };
 
@@ -258,27 +375,77 @@ const handleEditBooking = (booking: Doc<"bookings">) => {
 
 
   const handleBlockDate = async () => {
-    if (selectedDate) {
-      if (calendarMode === "accommodation") {
-        await setDateAvailability({ date: selectedDate, available: 0, adminKey: adminKey ?? undefined });
-      } else {
-        await setDateAvailability({ date: selectedDate, bomaBlocked: true, adminKey: adminKey ?? undefined });
+    try {
+      if (selectedDate) {
+        if (calendarMode === "accommodation") {
+          await setDateAvailability({ date: selectedDate, available: 0, adminKey: adminKey ?? undefined });
+        } else {
+          const bomaFieldMap: Record<string, string> = {
+            "Argyle": "bomaBlocked",
+            "Platform": "platformBlocked",
+            "Beacon": "beaconBlocked"
+          };
+          const blockedField = bomaFieldMap[selectedBoma] || "bomaBlocked";
+          // We need to pass the specific field to the mutation.
+          // Currently setDateAvailability takes specific named args.
+          // I need to update the mutation call to match the schema.
+          // The mutation args are: bomaBlocked, platformBlocked, beaconBlocked?
+          // Let's check convex/availability.ts. It only has bomaBlocked in args definition in the file content I read?
+          // Wait, I read availability.ts earlier.
+          // Line 58: bomaBlocked: v.optional(v.boolean()),
+          // It does NOT have platformBlocked or beaconBlocked in arguments!
+          // I need to update convex/availability.ts FIRST.
+          // But wait, I can use `await ctx.db.patch` in the mutation if I update the mutation to accept them.
+          // I will assume I need to update availability.ts.
+          // For now, let's write the Admin.tsx code assuming availability.ts will be updated.
+          
+          const args: any = { date: selectedDate, adminKey: adminKey ?? undefined };
+          args[blockedField] = true;
+          await setDateAvailability(args);
+        }
+        toast.success(`${calendarMode === "accommodation" ? "Accommodation" : selectedBoma} blocked`);
+        setIsCalendarDialogOpen(false);
       }
-      toast.success(`${calendarMode === "accommodation" ? "Accommodation" : "Boma"} blocked`);
-      setIsCalendarDialogOpen(false);
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.message || error.toString();
+      if (msg.includes("Forbidden")) {
+        toast.error("Invalid Admin Key. Please re-enter your key.");
+      } else {
+        toast.error("Failed to block date: " + msg);
+      }
     }
   };
 
   const handleUnblockDate = async () => {
-    if (selectedDate) {
-      if (calendarMode === "accommodation") {
-        const max = maxCapacity;
-        await setDateAvailability({ date: selectedDate, available: max, adminKey: adminKey ?? undefined });
-      } else {
-        await setDateAvailability({ date: selectedDate, bomaBlocked: false, adminKey: adminKey ?? undefined });
+    try {
+      if (selectedDate) {
+        if (calendarMode === "accommodation") {
+          const max = maxCapacity;
+          await setDateAvailability({ date: selectedDate, available: max, adminKey: adminKey ?? undefined });
+        } else {
+          const bomaFieldMap: Record<string, string> = {
+            "Argyle": "bomaBlocked",
+            "Platform": "platformBlocked",
+            "Beacon": "beaconBlocked"
+          };
+          const blockedField = bomaFieldMap[selectedBoma] || "bomaBlocked";
+          
+          const args: any = { date: selectedDate, adminKey: adminKey ?? undefined };
+          args[blockedField] = false;
+          await setDateAvailability(args);
+        }
+        toast.success(`${calendarMode === "accommodation" ? "Accommodation" : selectedBoma} unblocked`);
+        setIsCalendarDialogOpen(false);
       }
-      toast.success(`${calendarMode === "accommodation" ? "Accommodation" : "Boma"} unblocked`);
-      setIsCalendarDialogOpen(false);
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.message || error.toString();
+      if (msg.includes("Forbidden")) {
+        toast.error("Invalid Admin Key. Please re-enter your key.");
+      } else {
+        toast.error("Failed to unblock date: " + msg);
+      }
     }
   };
 
@@ -404,6 +571,28 @@ const handleEditBooking = (booking: Doc<"bookings">) => {
                   Boma
                 </button>
               </div>
+              {calendarMode === "boma" && (
+                <div className="bg-secondary rounded-lg p-1 flex text-sm ml-2">
+                  <button
+                    onClick={() => setSelectedBoma("Argyle")}
+                    className={`px-3 py-1.5 rounded-md transition-all ${selectedBoma === "Argyle" ? "bg-background shadow text-orange-700 font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Argyle
+                  </button>
+                  <button
+                    onClick={() => setSelectedBoma("Platform")}
+                    className={`px-3 py-1.5 rounded-md transition-all ${selectedBoma === "Platform" ? "bg-background shadow text-orange-700 font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Platform
+                  </button>
+                  <button
+                    onClick={() => setSelectedBoma("Beacon")}
+                    className={`px-3 py-1.5 rounded-md transition-all ${selectedBoma === "Beacon" ? "bg-background shadow text-orange-700 font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Beacon
+                  </button>
+                </div>
+              )}
             </div>
             <div className="flex items-center space-x-2">
               <Button variant="ghost" size="icon" className="rounded-full" onClick={handlePreviousMonth}>
@@ -440,7 +629,15 @@ const handleEditBooking = (booking: Doc<"bookings">) => {
 
               const dateAvail = availability[day.date];
               const isAccommodationBlocked = dateAvail?.blocked || dateAvail?.available === 0;
-              const isBomaBlocked = dateAvail?.bomaBlocked;
+              
+              const bomaFieldMap: Record<string, string> = {
+                "Argyle": "bomaBlocked",
+                "Platform": "platformBlocked",
+                "Beacon": "beaconBlocked"
+              };
+              const blockedField = bomaFieldMap[selectedBoma] || "bomaBlocked";
+              const isBomaBlocked = (dateAvail as any)?.[blockedField];
+
               const isBlocked = calendarMode === "accommodation" ? isAccommodationBlocked : isBomaBlocked;
               const bgColor = isBlocked 
                 ? (calendarMode === "accommodation" ? "bg-unavailable" : "bg-orange-200")
@@ -492,131 +689,261 @@ const handleEditBooking = (booking: Doc<"bookings">) => {
           </div>
         </div>
 
-        {/* Bookings Management */}
-        <div className="bg-card rounded-lg shadow-md p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <h2 className="text-2xl font-semibold">Booking Requests</h2>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search by name or email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          {/* Accommodation Bookings Table */}
+          <div className="bg-card rounded-lg shadow-md p-6 mb-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+              <h2 className="text-2xl font-semibold">Accommodation Requests</h2>
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search by name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Guest Name</TableHead>
+                    <TableHead>Bungalow</TableHead>
+                    <TableHead>User Type</TableHead>
+                    <TableHead>Check-in</TableHead>
+                    <TableHead>Check-out</TableHead>
+                    <TableHead>Total Price</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {accommodationBookings.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        No accommodation bookings found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    accommodationBookings.map((booking: Doc<"bookings">) => (
+                      <TableRow key={booking._id}>
+                        <TableCell className="font-medium">{booking.userName ?? "-"}</TableCell>
+                        <TableCell>
+                          {booking.bungalowNumber ?? "-"}
+                          {booking.bomaDates && booking.bomaDates.length > 0 && (
+                            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                              +{booking.bomaDates.length} Boma
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="capitalize">{booking.userType ?? "-"}</TableCell>
+                        <TableCell>{formatDDMMYYYY(booking.checkIn)}</TableCell>
+                        <TableCell>{formatDDMMYYYY(booking.checkOut)}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col text-right">
+                            <span className="font-semibold text-hero-brown">R {computeTotalCost(booking.checkIn, booking.checkOut, booking.bomaDates).toLocaleString()}</span>
+                            <span className="text-xs text-muted-foreground">{computeNights(booking.checkIn, booking.checkOut)} night(s)</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(booking.status)}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline">Actions</Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              {booking.status === "pending" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleApprove(booking._id)}>
+                                    <CheckCircle className="h-4 w-4 mr-2" /> Approve
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleReject(booking._id)} className="text-destructive">
+                                    <XCircle className="h-4 w-4 mr-2" /> Reject
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              {booking.status === "approved" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleRequestPayment(booking._id)}>
+                                    <Send className="h-4 w-4 mr-2" /> Request Payment
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              {booking.status === "payment_requested" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handlePaymentReceived(booking._id)}>
+                                    <DollarSign className="h-4 w-4 mr-2" /> Mark Payment Received
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              {booking.status === "payment_received" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleConfirm(booking._id)}>
+                                    <Check className="h-4 w-4 mr-2" /> Confirm Booking
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              {booking.status === "confirmed" && !booking.stayCompletedAt && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleCompleteStay(booking._id)}>
+                                    <CheckCircle className="h-4 w-4 mr-2" /> Complete Stay
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              <DropdownMenuItem onClick={() => handleEditBooking(booking)}>
+                                <Edit className="h-4 w-4 mr-2" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDelete(booking._id)} className="text-destructive">
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Guest Name</TableHead>
-                  <TableHead>Bungalow</TableHead>
-                  <TableHead>User Type</TableHead>
-                  <TableHead>Check-in</TableHead>
-                  <TableHead>Check-out</TableHead>
-                  <TableHead>Total Price</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredBookings.length === 0 ? (
+          {/* Boma Bookings Table */}
+          <div className="bg-card rounded-lg shadow-md p-6">
+            <h2 className="text-2xl font-semibold mb-6">Boma Requests</h2>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No bookings found
-                    </TableCell>
+                    <TableHead>Guest Name</TableHead>
+                    <TableHead>Boma</TableHead>
+                    <TableHead>Dates</TableHead>
+                    <TableHead>Total Price</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ) : (
-filteredBookings.map((booking: Doc<"bookings">) => (
-                    <TableRow key={booking._id}>
-                      <TableCell className="font-medium">{booking.userName ?? "-"}</TableCell>
-                      <TableCell>
-                        {booking.bungalowNumber ?? "-"}
-                        {booking.bomaDates && booking.bomaDates.length > 0 && (
-                          <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
-                            +{booking.bomaDates.length} Boma
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="capitalize">{booking.userType ?? "-"}</TableCell>
-                      <TableCell>{formatDDMMYYYY(booking.checkIn)}</TableCell>
-                      <TableCell>{formatDDMMYYYY(booking.checkOut)}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-col text-right">
-                          <span className="font-semibold text-hero-brown">R {computeTotalCost(booking.checkIn, booking.checkOut, booking.bomaDates).toLocaleString()}</span>
-                          <span className="text-xs text-muted-foreground">{computeNights(booking.checkIn, booking.checkOut)} night(s)</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(booking.status)}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline">Actions</Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            {booking.status === "pending" && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleApprove(booking._id)}>
-                                  <CheckCircle className="h-4 w-4 mr-2" /> Approve
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleReject(booking._id)} className="text-destructive">
-                                  <XCircle className="h-4 w-4 mr-2" /> Reject
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                              </>
-                            )}
-                            {booking.status === "approved" && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleRequestPayment(booking._id)}>
-                                  <Send className="h-4 w-4 mr-2" /> Request Payment
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                              </>
-                            )}
-                            {booking.status === "payment_requested" && (
-                              <>
-                                <DropdownMenuItem onClick={() => handlePaymentReceived(booking._id)}>
-                                  <DollarSign className="h-4 w-4 mr-2" /> Mark Payment Received
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                              </>
-                            )}
-                            {booking.status === "payment_received" && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleConfirm(booking._id)}>
-                                  <Check className="h-4 w-4 mr-2" /> Confirm Booking
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                              </>
-                            )}
-                            {booking.status === "confirmed" && !booking.stayCompletedAt && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleCompleteStay(booking._id)}>
-                                  <CheckCircle className="h-4 w-4 mr-2" /> Complete Stay
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                              </>
-                            )}
-                            <DropdownMenuItem onClick={() => handleEditBooking(booking)}>
-                              <Edit className="h-4 w-4 mr-2" /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDelete(booking._id)} className="text-destructive">
-                              <Trash2 className="h-4 w-4 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                </TableHeader>
+                <TableBody>
+                  {bomaBookings.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No boma bookings found
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    bomaBookings.map((booking: Doc<"bookings">) => {
+                      const isBomaOnly = booking.type === "boma";
+                      const bomaName = isBomaOnly ? booking.bungalowNumber : "Argyle";
+                      
+                      // Calculate specific boma cost
+                      let bomaCost = 0;
+                      if (isBomaOnly) {
+                        bomaCost = computeNights(booking.checkIn, booking.checkOut) * 350;
+                      } else if (booking.bomaDates) {
+                        bomaCost = booking.bomaDates.length * 350;
+                      }
+
+                      // Format dates
+                      let dateDisplay;
+                      if (isBomaOnly) {
+                         // List all dates in range
+                         const start = parseLocal(booking.checkIn);
+                         const end = parseLocal(booking.checkOut);
+                         const dates = [];
+                         for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+                           dates.push(toISO(d));
+                         }
+                         dateDisplay = dates.map(formatDDMMYYYY).join(", ");
+                      } else {
+                         dateDisplay = booking.bomaDates?.map(formatDDMMYYYY).join(", ") ?? "-";
+                      }
+
+                      return (
+                        <TableRow key={booking._id}>
+                          <TableCell className="font-medium">{booking.userName ?? "-"}</TableCell>
+                          <TableCell>{bomaName}</TableCell>
+                          <TableCell className="max-w-xs break-words">{dateDisplay}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col text-right">
+                              <span className="font-semibold text-hero-brown">R {bomaCost.toLocaleString()}</span>
+                              {/* <span className="text-xs text-muted-foreground">Per braai</span> */}
+                            </div>
+                          </TableCell>
+                          <TableCell>{getStatusBadge(booking.status)}</TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline">Actions</Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                {booking.status === "pending" && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => handleApprove(booking._id)}>
+                                      <CheckCircle className="h-4 w-4 mr-2" /> Approve
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleReject(booking._id)} className="text-destructive">
+                                      <XCircle className="h-4 w-4 mr-2" /> Reject
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
+                                {booking.status === "approved" && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => handleRequestPayment(booking._id)}>
+                                      <Send className="h-4 w-4 mr-2" /> Request Payment
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
+                                {booking.status === "payment_requested" && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => handlePaymentReceived(booking._id)}>
+                                      <DollarSign className="h-4 w-4 mr-2" /> Mark Payment Received
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
+                                {booking.status === "payment_received" && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => handleConfirm(booking._id)}>
+                                      <Check className="h-4 w-4 mr-2" /> Confirm Booking
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
+                                {booking.status === "confirmed" && !booking.stayCompletedAt && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => handleCompleteStay(booking._id)}>
+                                      <CheckCircle className="h-4 w-4 mr-2" /> Complete Stay
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
+                                <DropdownMenuItem onClick={() => handleEditBooking(booking)}>
+                                  <Edit className="h-4 w-4 mr-2" /> Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDelete(booking._id)} className="text-destructive">
+                                  <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
-        </div>
       </main>
 
       {/* Calendar Edit Dialog */}
@@ -636,7 +963,15 @@ filteredBookings.map((booking: Doc<"bookings">) => (
                   if (calendarMode === "accommodation") {
                     return (av?.blocked || av?.available === 0) ? "Accommodation is currently blocked." : "Accommodation is currently available.";
                   } else {
-                    return av?.bomaBlocked ? "Boma is currently blocked." : "Boma is currently available.";
+                    const bomaFieldMap: Record<string, string> = {
+                      "Argyle": "bomaBlocked",
+                      "Platform": "platformBlocked",
+                      "Beacon": "beaconBlocked"
+                    };
+                    const blockedField = bomaFieldMap[selectedBoma] || "bomaBlocked";
+                    const isBomaBlocked = (av as any)?.[blockedField];
+                    
+                    return isBomaBlocked ? `${selectedBoma} is currently blocked.` : `${selectedBoma} is currently available.`;
                   }
                 })()}
               </p>
@@ -645,14 +980,14 @@ filteredBookings.map((booking: Doc<"bookings">) => (
           <DialogFooter className="flex-col sm:flex-row gap-2">
             {selectedDate && (
               (calendarMode === "accommodation" && (availability[selectedDate]?.blocked || availability[selectedDate]?.available === 0)) ||
-              (calendarMode === "boma" && availability[selectedDate]?.bomaBlocked)
+              (calendarMode === "boma" && (availability[selectedDate] as any)?.[(selectedBoma === "Argyle" ? "bomaBlocked" : selectedBoma === "Platform" ? "platformBlocked" : "beaconBlocked")])
             ) ? (
               <Button onClick={handleUnblockDate} className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
-                Unblock {calendarMode === "accommodation" ? "Date" : "Boma"}
+                Unblock {calendarMode === "accommodation" ? "Date" : selectedBoma}
               </Button>
             ) : (
               <Button variant="destructive" onClick={handleBlockDate} className="w-full sm:w-auto">
-                <Lock className="h-4 w-4 mr-2" /> Block {calendarMode === "accommodation" ? "Date" : "Boma"}
+                <Lock className="h-4 w-4 mr-2" /> Block {calendarMode === "accommodation" ? "Date" : selectedBoma}
               </Button>
             )}
             <Button variant="outline" onClick={() => setIsCalendarDialogOpen(false)} className="w-full sm:w-auto">

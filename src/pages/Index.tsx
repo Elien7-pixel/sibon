@@ -23,10 +23,31 @@ const Index = () => {
   const [bookingType, setBookingType] = useState<"bungalow" | "boma">("bungalow");
 
   const toggleBomaDate = (dateStr: string) => {
+    let newDates;
     if (bomaDates.includes(dateStr)) {
-      setBomaDates(bomaDates.filter(d => d !== dateStr));
+      newDates = bomaDates.filter(d => d !== dateStr);
     } else {
-      setBomaDates([...bomaDates, dateStr].sort());
+      newDates = [...bomaDates, dateStr].sort();
+    }
+    setBomaDates(newDates);
+
+    // Update selectedRange to reflect the boma dates
+    // This ensures the booking form displays the correct date range
+    if (newDates.length > 0) {
+      const sorted = [...newDates].sort();
+      const start = new Date(sorted[0]);
+      const end = new Date(sorted[sorted.length - 1]);
+      // Add 1 day to end for checkout display logic (since range is usually start->end exclusive of end night, 
+      // but here we selected specific days. If I select 29th, I want to book 29th. 
+      // BookingForm typically shows checkin 29, checkout 30 for 1 night.
+      end.setDate(end.getDate() + 1);
+      
+      setSelectedRange({
+        startDate: start,
+        endDate: end,
+        start: start.getDate(),
+        end: end.getDate()
+      });
     }
   };
 

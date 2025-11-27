@@ -238,22 +238,35 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-available-foreground" />
-              Booking request sent
+              {type === "boma" ? "Boma Request Sent" : "Booking Request Sent"}
             </DialogTitle>
             <DialogDescription>
-              Thanks {name || ""}! We’ve received your request and an admin will review it shortly.
+              {type === "boma" 
+                ? `Thanks ${name || ""}! Your Boma request has been received and will be reviewed shortly.`
+                : `Thanks ${name || ""}! We’ve received your request and an admin will review it shortly.`}
             </DialogDescription>
           </DialogHeader>
           <div className="bg-secondary rounded-md p-4 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Arrival</span><span className="font-medium">{formatDDMMYYYY(parseLocalDate(checkIn))}</span></div>
-            <div className="flex justify-between mt-1"><span className="text-muted-foreground">Departure</span><span className="font-medium">{formatDDMMYYYY(parseLocalDate(checkOut))}</span></div>
-            <div className="flex justify-between mt-1"><span className="text-muted-foreground">Bungalow</span><span className="font-medium">{bungalowNumber}</span></div>
-            <div className="flex justify-between mt-1"><span className="text-muted-foreground">Status</span><span className="font-medium">{userType === "owner" ? "Owner" : "Registered User"}</span></div>
-            {bomaDates.length > 0 && (
-              <div className="flex justify-between mt-1">
-                <span className="text-muted-foreground">Argyle Boma</span>
-                <span className="font-medium text-primary">{bomaDates.length} night(s) requested</span>
-              </div>
+            {type === "boma" ? (
+              <>
+                <div className="flex justify-between"><span className="text-muted-foreground">Boma</span><span className="font-medium">{bungalowNumber || selectedBoma}</span></div>
+                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Dates</span><span className="font-medium">{formatDDMMYYYY(parseLocalDate(checkIn))} - {formatDDMMYYYY(parseLocalDate(checkOut))}</span></div>
+                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Status</span><span className="font-medium">Registered User</span></div>
+                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Total Cost</span><span className="font-medium text-primary">R {((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)) * 350}</span></div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between"><span className="text-muted-foreground">Arrival</span><span className="font-medium">{formatDDMMYYYY(parseLocalDate(checkIn))}</span></div>
+                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Departure</span><span className="font-medium">{formatDDMMYYYY(parseLocalDate(checkOut))}</span></div>
+                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Bungalow</span><span className="font-medium">{bungalowNumber}</span></div>
+                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Status</span><span className="font-medium">{userType === "owner" ? "Owner" : "Registered User"}</span></div>
+                {bomaDates.length > 0 && (
+                  <div className="flex justify-between mt-1">
+                    <span className="text-muted-foreground">Argyle Boma</span>
+                    <span className="font-medium text-primary">{bomaDates.length} night(s) requested</span>
+                  </div>
+                )}
+              </>
             )}
             {notes && (
               <div className="mt-2">

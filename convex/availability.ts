@@ -35,13 +35,15 @@ export const getMonthAvailability = query({
     // Pull all dates for the month
     const results = await ctx.db.query("availability").collect();
     const prefix = `${year}-${String(month).padStart(2, "0")}-`;
-    const byDate: Record<string, { available: number; blocked: boolean; bomaBlocked?: boolean; seasonType?: "peak" | "offpeak" }> = {};
+    const byDate: Record<string, { available: number; blocked: boolean; bomaBlocked?: boolean; platformBlocked?: boolean; beaconBlocked?: boolean; seasonType?: "peak" | "offpeak" }> = {};
     for (const r of results) {
       if (r.date.startsWith(prefix)) {
         byDate[r.date] = { 
           available: r.available, 
           blocked: r.blocked,
           bomaBlocked: r.bomaBlocked,
+          platformBlocked: r.platformBlocked,
+          beaconBlocked: r.beaconBlocked,
           seasonType: r.seasonType 
         };
       }
@@ -56,10 +58,12 @@ export const setDateAvailability = mutation({
     available: v.optional(v.number()), 
     blocked: v.optional(v.boolean()),
     bomaBlocked: v.optional(v.boolean()),
+    platformBlocked: v.optional(v.boolean()),
+    beaconBlocked: v.optional(v.boolean()),
     seasonType: v.optional(v.union(v.literal("peak"), v.literal("offpeak"))),
     adminKey: v.optional(v.string()) 
   },
-  handler: async (ctx, { date, available, blocked, bomaBlocked, seasonType, adminKey }) => {
+  handler: async (ctx, { date, available, blocked, bomaBlocked, platformBlocked, beaconBlocked, seasonType, adminKey }) => {
     const settings = await ctx.db
       .query("settings")
       .withIndex("by_key", (q) => q.eq("key", "global"))
@@ -84,6 +88,8 @@ export const setDateAvailability = mutation({
       if (available === 0 && blocked === undefined) updates.blocked = true;
       
       if (bomaBlocked !== undefined) updates.bomaBlocked = bomaBlocked;
+      if (platformBlocked !== undefined) updates.platformBlocked = platformBlocked;
+      if (beaconBlocked !== undefined) updates.beaconBlocked = beaconBlocked;
       if (seasonType !== undefined) updates.seasonType = seasonType;
 
       await ctx.db.patch(existing._id, updates);
@@ -95,6 +101,8 @@ export const setDateAvailability = mutation({
         available: available ?? maxCapacity, 
         blocked: blocked ?? (available === 0), 
         bomaBlocked: bomaBlocked ?? false,
+        platformBlocked: platformBlocked ?? false,
+        beaconBlocked: beaconBlocked ?? false,
         seasonType 
       });
     }
