@@ -12,8 +12,8 @@ import { api } from "../../convex/_generated/api";
 type Props = {
   year: number; // e.g. 2025
   month: number; // 1-12
-  selectedRange: { 
-    start: number; 
+  selectedRange: {
+    start: number;
     end: number;
     startDate?: Date;
     endDate?: Date;
@@ -21,9 +21,11 @@ type Props = {
   onDateChange?: (start: Date, end: Date) => void;
   bomaDates: string[];
   onBomaDatesChange: (dates: string[]) => void;
+  type?: "bungalow" | "boma";
+  selectedBoma?: "Argyle" | "Platform" | "Beacon";
 };
 
-const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBomaDatesChange }: Props) => {
+const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBomaDatesChange, type = "bungalow", selectedBoma = "Argyle" }: Props) => {
   const [notes, setNotes] = useState("");
   const [name, setName] = useState("");
   const [bungalowNumber, setBungalowNumber] = useState("");
@@ -52,7 +54,7 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
     if (manualCheckIn && manualCheckOut) {
       return { checkIn: manualCheckIn, checkOut: manualCheckOut };
     }
-    
+
     if (selectedRange.startDate && selectedRange.endDate) {
       const formatDate = (date: Date) => {
         const year = date.getFullYear();
@@ -60,12 +62,12 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
       };
-      
+
       const ci = formatDate(selectedRange.startDate);
       const co = formatDate(selectedRange.endDate);
       return { checkIn: ci, checkOut: co };
     }
-    
+
     // Fallback for when dates aren't set yet
     const today = new Date();
     const tomorrow = new Date(today);
@@ -81,20 +83,21 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
       toast.error("Please enter your name");
       return;
     }
-    if (!bungalowNumber) {
+    if (type === "bungalow" && !bungalowNumber) {
       toast.error("Please enter your bungalow number");
       return;
     }
     setSubmitting(true);
     try {
-      await createBooking({ 
-        checkIn, 
-        checkOut, 
-        bungalowNumber,
+      await createBooking({
+        checkIn,
+        checkOut,
+        bungalowNumber: type === "boma" ? selectedBoma : bungalowNumber,
         userType,
-        notes: notes || undefined, 
+        notes: notes || undefined,
         userName: name,
-        bomaDates
+        bomaDates,
+        type
       });
       toast.success("Booking request submitted!", {
         description: "An admin will review your request shortly.",
@@ -115,52 +118,56 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
 
   return (
     <div className="bg-card p-6 rounded-lg shadow-md w-full flex flex-col">
-      <h2 className="text-xl font-semibold mb-6">Book Sibon</h2>
+      <h2 className="text-xl font-semibold mb-6">{type === "boma" ? "Book Boma" : "Book Sibon"}</h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label htmlFor="arrivalDate" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
-            <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-            Arrival Date
-          </label>
-          <Input 
-            id="arrivalDate" 
-            type="date" 
-            value={checkIn} 
-            onChange={(e) => {
-              setManualCheckIn(e.target.value);
-              if (e.target.value && checkOut && onDateChange) {
-                const start = parseLocalDate(e.target.value);
-                const end = parseLocalDate(checkOut);
-                onDateChange(start, end);
-              }
-            }}
-            min={new Date().toISOString().split('T')[0]}
-            className="bg-background" 
-          />
-        </div>
+        {type === "bungalow" && (
+          <>
+            <div>
+              <label htmlFor="arrivalDate" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
+                <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                Arrival Date
+              </label>
+              <Input
+                id="arrivalDate"
+                type="date"
+                value={checkIn}
+                onChange={(e) => {
+                  setManualCheckIn(e.target.value);
+                  if (e.target.value && checkOut && onDateChange) {
+                    const start = parseLocalDate(e.target.value);
+                    const end = parseLocalDate(checkOut);
+                    onDateChange(start, end);
+                  }
+                }}
+                min={new Date().toISOString().split('T')[0]}
+                className="bg-background"
+              />
+            </div>
 
-        <div>
-          <label htmlFor="departureDate" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
-            <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-            Departure Date
-          </label>
-          <Input 
-            id="departureDate" 
-            type="date" 
-            value={checkOut} 
-            onChange={(e) => {
-              setManualCheckOut(e.target.value);
-              if (checkIn && e.target.value && onDateChange) {
-                const start = parseLocalDate(checkIn);
-                const end = parseLocalDate(e.target.value);
-                onDateChange(start, end);
-              }
-            }}
-            min={checkIn}
-            className="bg-background" 
-          />
-        </div>
+            <div>
+              <label htmlFor="departureDate" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
+                <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                Departure Date
+              </label>
+              <Input
+                id="departureDate"
+                type="date"
+                value={checkOut}
+                onChange={(e) => {
+                  setManualCheckOut(e.target.value);
+                  if (checkIn && e.target.value && onDateChange) {
+                    const start = parseLocalDate(checkIn);
+                    const end = parseLocalDate(e.target.value);
+                    onDateChange(start, end);
+                  }
+                }}
+                min={checkIn}
+                className="bg-background"
+              />
+            </div>
+          </>
+        )}
 
         <div>
           <label htmlFor="name" className="flex items-center text-sm font-medium text-foreground/70 mb-1">

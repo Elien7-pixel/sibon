@@ -7,13 +7,14 @@ export default defineSchema({
     userEmail: v.optional(v.string()),
     userName: v.optional(v.string()),
     bungalowNumber: v.optional(v.string()), // User's bungalow number
+    type: v.optional(v.union(v.literal("bungalow"), v.literal("boma"))), // Booking type
     userType: v.optional(v.union(v.literal("owner"), v.literal("registered"))), // Owner or Registered User
     checkIn: v.string(), // YYYY-MM-DD (Arrival Date)
     checkOut: v.string(), // YYYY-MM-DD (Departure Date)
     guests: v.optional(v.number()), // Made optional since capacity is fixed
     status: v.union(
-      v.literal("pending"), 
-      v.literal("approved"), 
+      v.literal("pending"),
+      v.literal("approved"),
       v.literal("rejected"),
       v.literal("payment_requested"), // Admin sent EFT request
       v.literal("payment_received"), // Payment received, ready for confirmation
@@ -36,7 +37,9 @@ export default defineSchema({
     date: v.string(), // YYYY-MM-DD
     available: v.number(),
     blocked: v.boolean(),
-    bomaBlocked: v.optional(v.boolean()),
+    bomaBlocked: v.optional(v.boolean()), // Argyle Boma blocked?
+    platformBlocked: v.optional(v.boolean()), // The Platform blocked?
+    beaconBlocked: v.optional(v.boolean()), // Beacon Boma blocked?
     seasonType: v.optional(v.union(v.literal("peak"), v.literal("offpeak"))), // Season pricing
   }).index("by_date", ["date"]),
 
