@@ -136,7 +136,7 @@ const Index = () => {
       });
     }
     return map;
-  }, [avail, bookingType, settings, selectedBoma]);
+  }, [avail, bookingType, settings, selectedBoma, selectedCottage]);
 
   const maxCapacity = settings?.maxCapacity ?? 16;
 
