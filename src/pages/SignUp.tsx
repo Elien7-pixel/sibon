@@ -27,10 +27,6 @@ const SignUp = () => {
           <div className="space-y-3 text-sm">
             <div className="flex items-start space-x-3">
               <div className="w-1.5 h-1.5 rounded-full bg-white mt-2" />
-              <p>Sleeps up to 16 guests</p>
-            </div>
-            <div className="flex items-start space-x-3">
-              <div className="w-1.5 h-1.5 rounded-full bg-white mt-2" />
               <p>Competitive seasonal rates</p>
             </div>
             <div className="flex items-start space-x-3">
