@@ -22,7 +22,7 @@ export const createBooking = mutation({
     userEmail: v.optional(v.string()),
     userName: v.optional(v.string()),
     bomaDates: v.optional(v.array(v.string())),
-    type: v.optional(v.union(v.literal("bungalow"), v.literal("boma"))),
+    type: v.optional(v.union(v.literal("bungalow"), v.literal("boma"), v.literal("cottage"))),
   },
   handler: async (ctx, { checkIn, checkOut, bungalowNumber, userType, notes, userEmail, userName, bomaDates, type }) => {
     const bookingType = type ?? "bungalow";
@@ -64,6 +64,68 @@ export const createBooking = mutation({
         status: "pending",
         notes,
         type: "boma",
+        createdAt,
+      });
+    }
+
+    if (bookingType === "cottage") {
+      // Cottage-specific validation: prevent overlapping bookings for the same cottage
+      const newStart = new Date(checkIn);
+      const newEnd = new Date(checkOut);
+      const cottageName = bungalowNumber; // e.g. "Hornbill Cottage"
+
+      // Check availability table for manual blocks
+      const cottageFieldMap: Record<string, string> = {
+        "Hornbill Cottage": "hornbillBlocked",
+        "Francolin Cottage": "francolinBlocked",
+        "Guineafowl Cottage": "guineafowlBlocked"
+      };
+      const blockedField = cottageFieldMap[cottageName];
+
+      if (blockedField) {
+        for (let d = new Date(newStart); d < newEnd; d.setDate(d.getDate() + 1)) {
+          const dateStr = d.toISOString().split('T')[0];
+          const availability = await ctx.db
+            .query("availability")
+            .withIndex("by_date", (q) => q.eq("date", dateStr))
+            .unique();
+          
+          if (availability && (availability as any)[blockedField]) {
+            throw new Error(`${cottageName} is manually blocked by admin on ${dateStr}`);
+          }
+        }
+      }
+
+      const existingCottageBookings = await ctx.db
+        .query("bookings")
+        .withIndex("by_bungalow", (q) => q.eq("bungalowNumber", bungalowNumber))
+        .collect();
+
+      const overlaps = existingCottageBookings.find((booking) => {
+        if (booking.type !== "cottage") return false;
+        if (["rejected"].includes(booking.status)) return false;
+        const existingStart = new Date(booking.checkIn);
+        const existingEnd = new Date(booking.checkOut);
+        // Overlap if date ranges intersect
+        return existingStart < newEnd && newStart < existingEnd;
+      });
+
+      if (overlaps) {
+        throw new Error("This cottage is already booked for some of the selected dates. Please choose different dates.");
+      }
+
+      const createdAt = Date.now();
+      return await ctx.db.insert("bookings", {
+        userId: `cottage-${bungalowNumber}`,
+        userEmail,
+        userName,
+        bungalowNumber,
+        userType,
+        checkIn,
+        checkOut,
+        status: "pending",
+        notes,
+        type: "cottage",
         createdAt,
       });
     }
@@ -214,13 +276,49 @@ export const updateStatus = mutation({
               [blockedField]: true
             } as any);
           }
-        } else {
-          // For Bungalow bookings
+        } else if (booking.type === "cottage") {
+          // For Cottages: block specific cottage type
+          // In schema we allow "Hornbill Cottage" as bungalowNumber for cottage type
+          const cottageName = booking.bungalowNumber; 
+          const cottageFieldMap: Record<string, string> = {
+             "Hornbill Cottage": "hornbillBlocked",
+             "Francolin Cottage": "francolinBlocked",
+             "Guineafowl Cottage": "guineafowlBlocked"
+          };
+          // Fallback shouldn't happen if data is correct, but safety check
+          const blockedField = cottageName ? cottageFieldMap[cottageName] : undefined;
+          
+          if (blockedField) {
+            if (existing) {
+              // We must preserve existing flags for OTHER cottages/bomas/sibon.
+              // `patch` performs a partial update, so only the specified fields are changed.
+              // This is correct: it sets THIS cottage's flag to true, leaving others alone.
+              await ctx.db.patch(existing._id, { [blockedField]: true } as any);
+            } else {
+              // If the record doesn't exist, create it.
+              // IMPORTANT: We must initialize ALL blocked flags to false (except the one being blocked)
+              // to avoid undefined behavior or treating missing fields as blocked/unblocked incorrectly.
+              // The schema defines them as optional, so if missing, frontend might default them to false.
+              // Let's explicitly set the one we want to true.
+              const maxCapacity = settings?.value?.maxCapacity ?? 16;
+              await ctx.db.insert("availability", {
+                date: dateStr,
+                available: maxCapacity,
+                blocked: false,
+                [blockedField]: true
+              } as any);
+            }
+          }
+        } else if (!booking.type || booking.type === "bungalow") {
+          // For main Sibon bungalow bookings, block accommodation globally
           if (existing) {
             await ctx.db.patch(existing._id, { available: 0, blocked: true });
           } else {
             await ctx.db.insert("availability", { date: dateStr, available: 0, blocked: true });
           }
+        } else {
+          // For cottages (and any other future types), do not change global availability;
+          // overlapping prevention is handled per-unit when creating the booking.
         }
       }
 
@@ -286,6 +384,73 @@ export const remove = mutation({
       .unique();
     const storedKey = settings?.value?.adminKey;
     if (storedKey && storedKey !== adminKey) throw new Error("Forbidden");
+
+    const booking = await ctx.db.get(id);
+    if (!booking) {
+      // Booking not found, maybe already deleted
+      return; 
+    }
+
+    // If booking was approved or confirmed, we need to unblock the availability
+    if (["approved", "confirmed"].includes(booking.status)) {
+      const checkIn = new Date(booking.checkIn);
+      const checkOut = new Date(booking.checkOut);
+
+      for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        const dateStr = `${y}-${m}-${day}`;
+        const existing = await ctx.db
+          .query("availability")
+          .withIndex("by_date", (q) => q.eq("date", dateStr))
+          .unique();
+
+        if (existing) {
+          if (booking.type === "boma") {
+            const bomaName = booking.bungalowNumber || "Argyle";
+            const bomaFieldMap: Record<string, string> = {
+              "Argyle": "bomaBlocked",
+              "Platform": "platformBlocked",
+              "Beacon": "beaconBlocked"
+            };
+            const blockedField = bomaFieldMap[bomaName];
+            if (blockedField) {
+              await ctx.db.patch(existing._id, { [blockedField]: false } as any);
+            }
+          } else if (booking.type === "cottage") {
+            const cottageName = booking.bungalowNumber || "Hornbill Cottage";
+            const cottageFieldMap: Record<string, string> = {
+              "Hornbill Cottage": "hornbillBlocked",
+              "Francolin Cottage": "francolinBlocked",
+              "Guineafowl Cottage": "guineafowlBlocked"
+            };
+            const blockedField = cottageFieldMap[cottageName];
+            if (blockedField) {
+              await ctx.db.patch(existing._id, { [blockedField]: false } as any);
+            }
+          } else if (!booking.type || booking.type === "bungalow") {
+            // For main Sibon bungalow bookings, unblock accommodation
+            const maxCapacity = settings?.value?.maxCapacity ?? 16;
+            await ctx.db.patch(existing._id, { available: maxCapacity, blocked: false });
+          }
+        }
+      }
+
+      // Also unblock add-on Boma dates
+      if (booking.bomaDates && booking.bomaDates.length > 0) {
+        for (const dateStr of booking.bomaDates) {
+          const existing = await ctx.db
+            .query("availability")
+            .withIndex("by_date", (q) => q.eq("date", dateStr))
+            .unique();
+          if (existing) {
+            await ctx.db.patch(existing._id, { bomaBlocked: false });
+          }
+        }
+      }
+    }
+
     await ctx.db.delete(id);
   },
 });

@@ -18,12 +18,12 @@ const SignUp = () => {
 
         <div className="relative z-20 max-w-md p-8 lg:p-12 flex flex-col justify-center min-h-screen">
           <div className="flex items-center space-x-3 mb-6">
-            <img src="/ingwelala-logo.jpeg" alt="Sibon Logo" className="h-16 w-16 rounded-lg bg-white p-1 object-contain" />
-            <h1 className="text-3xl font-bold">Sibon</h1>
+            <img src="/ingwelala-logo.jpeg" alt="Ingwelala Logo" className="h-16 w-16 rounded-lg bg-white p-1 object-contain" />
+            <h1 className="text-3xl font-bold">Ingwelala Boma Booking</h1>
           </div>
 
-          <h2 className="text-4xl font-bold mb-4">Welcome to Sibon</h2>
-          <p className="text-lg opacity-90 mb-6">Your perfect bush getaway awaits. Book your stay at Sibon today.</p>
+          <h2 className="text-4xl font-bold mb-4">Welcome to Ingwelala</h2>
+          <p className="text-lg opacity-90 mb-6">Your perfect bush getaway awaits. Book your Boma experience today.</p>
           <div className="space-y-3 text-sm">
             <div className="flex items-start space-x-3">
               <div className="w-1.5 h-1.5 rounded-full bg-white mt-2" />

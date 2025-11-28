@@ -6,8 +6,14 @@ export default defineSchema({
     userId: v.string(),
     userEmail: v.optional(v.string()),
     userName: v.optional(v.string()),
-    bungalowNumber: v.optional(v.string()), // User's bungalow number
-    type: v.optional(v.union(v.literal("bungalow"), v.literal("boma"))), // Booking type
+    bungalowNumber: v.optional(v.string()), // User's bungalow number or unit name (for bomas/cottages)
+    type: v.optional(
+      v.union(
+        v.literal("bungalow"),
+        v.literal("boma"),
+        v.literal("cottage"),
+      )
+    ), // Booking type
     userType: v.optional(v.union(v.literal("owner"), v.literal("registered"))), // Owner or Registered User
     checkIn: v.string(), // YYYY-MM-DD (Arrival Date)
     checkOut: v.string(), // YYYY-MM-DD (Departure Date)
@@ -40,6 +46,9 @@ export default defineSchema({
     bomaBlocked: v.optional(v.boolean()), // Argyle Boma blocked?
     platformBlocked: v.optional(v.boolean()), // The Platform blocked?
     beaconBlocked: v.optional(v.boolean()), // Beacon Boma blocked?
+    hornbillBlocked: v.optional(v.boolean()), // Hornbill Cottage blocked?
+    francolinBlocked: v.optional(v.boolean()), // Francolin Cottage blocked?
+    guineafowlBlocked: v.optional(v.boolean()), // Guineafowl Cottage blocked?
     seasonType: v.optional(v.union(v.literal("peak"), v.literal("offpeak"))), // Season pricing
   }).index("by_date", ["date"]),
 

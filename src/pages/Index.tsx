@@ -20,14 +20,24 @@ const Index = () => {
     endDate: tomorrow
   });
   const [bomaDates, setBomaDates] = useState<string[]>([]);
-  const [bookingType, setBookingType] = useState<"bungalow" | "boma">("bungalow");
+  const [bookingType, setBookingType] = useState<"boma" | "cottage">("boma");
 
   const toggleBomaDate = (dateStr: string) => {
     let newDates;
-    if (bomaDates.includes(dateStr)) {
-      newDates = bomaDates.filter(d => d !== dateStr);
+    if (bookingType === "boma") {
+      // Enforce single night selection for standalone Boma bookings
+      if (bomaDates.includes(dateStr)) {
+        newDates = []; // Deselect if same date clicked
+      } else {
+        newDates = [dateStr]; // Select new date (replaces any existing selection)
+      }
     } else {
-      newDates = [...bomaDates, dateStr].sort();
+      // Original logic for add-ons or other types (if applicable)
+      if (bomaDates.includes(dateStr)) {
+        newDates = bomaDates.filter(d => d !== dateStr);
+      } else {
+        newDates = [...bomaDates, dateStr].sort();
+      }
     }
     setBomaDates(newDates);
 
@@ -52,6 +62,32 @@ const Index = () => {
   };
 
   const [selectedBoma, setSelectedBoma] = useState<"Argyle" | "Platform" | "Beacon">("Argyle");
+  type CottageKey = "Hornbill" | "Francolin" | "Guineafowl";
+  const [selectedCottage, setSelectedCottage] = useState<CottageKey>("Hornbill");
+
+  const cottageConfig: Record<CottageKey, { name: string; rate: number; maxGuests: number; description: string }> = {
+    Hornbill: {
+      name: "Hornbill Cottage",
+      rate: 1200,
+      maxGuests: 2,
+      description:
+        "This guest cottage is available to Ingwelala Members only. It is an open plan rondavel with two single beds and small kitchen/dining area. There is a seperate bathroom with shower & toilet facilities. A braai is provided on the outside patio.",
+    },
+    Francolin: {
+      name: "Francolin Cottage",
+      rate: 2000,
+      maxGuests: 4,
+      description:
+        "This guest cottage is available to Ingwelala Members only. It has two bedrooms, each with 2 singles beds and a bathroom (shower & toilet). Facilities include a kitchen/dining area and an outside gazebo with braai.",
+    },
+    Guineafowl: {
+      name: "Guineafowl Cottage",
+      rate: 2500,
+      maxGuests: 6,
+      description:
+        "This guest cottage is available to Ingwelala Members only. One room offers a queen bed with en suite bathroom (bath & toilet). The other room has four single beds with a bathroom (shower & toilet). Facilities include a kitchen, dining area and gazebo.",
+    },
+  };
 
   const settings = useQuery(api.availability.getSettings, {});
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -68,15 +104,29 @@ const Index = () => {
         const day = Number(date.split("-")[2]);
         let available = value.available;
 
-        if (bookingType === "boma") {
-          // For Boma, check the specific boma's blocked status
-          const bomaFieldMap: Record<string, string> = {
-            "Argyle": "bomaBlocked",
-            "Platform": "platformBlocked",
-            "Beacon": "beaconBlocked"
-          };
-          const blockedField = bomaFieldMap[selectedBoma] || "bomaBlocked";
-          available = (value as any)[blockedField] ? 0 : (settings?.maxCapacity ?? 16);
+        if (bookingType === "boma" || bookingType === "cottage") {
+           // If it's boma or cottage, we reset available to max first (ignoring Sibon block),
+           // then apply specific block.
+           available = settings?.maxCapacity ?? 16;
+           
+           if (bookingType === "boma") {
+              const bomaFieldMap: Record<string, string> = {
+                "Argyle": "bomaBlocked",
+                "Platform": "platformBlocked",
+                "Beacon": "beaconBlocked"
+              };
+              const blockedField = bomaFieldMap[selectedBoma] || "bomaBlocked";
+              if ((value as any)[blockedField]) available = 0;
+           } else {
+              const cottageFieldMap: Record<string, string> = {
+                "Hornbill": "hornbillBlocked",
+                "Francolin": "francolinBlocked",
+                "Guineafowl": "guineafowlBlocked"
+              };
+              // The selectedCottage state is keys: Hornbill, Francolin, Guineafowl
+              const blockedField = cottageFieldMap[selectedCottage] || "hornbillBlocked";
+              if ((value as any)[blockedField]) available = 0;
+           }
         }
 
         map[day] = {
@@ -158,12 +208,39 @@ const Index = () => {
                   <h3 className="font-semibold text-lg mb-2">Beacon Boma</h3>
                   <p className="text-3xl font-bold text-orange-900">R 500<span className="text-lg font-normal text-muted-foreground">/night</span></p>
                 </div>
+            </div>
+            </>
+          )}
+          {bookingType === "cottage" && (
+            <>
+              <p className="text-sm text-muted-foreground mb-4">Select which Cottage you would like to book:</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {(["Hornbill", "Francolin", "Guineafowl"] as CottageKey[]).map((key) => {
+                  const cfg = cottageConfig[key];
+                  return (
+                    <div
+                      key={key}
+                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedCottage === key
+                        ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200"
+                        : "border-border bg-background hover:border-emerald-300"}
+                      `}
+                      onClick={() => setSelectedCottage(key)}
+                    >
+                      <h3 className="font-semibold text-lg mb-1">{cfg.name}</h3>
+                      <p className="text-sm text-muted-foreground mb-1">Max guests: {cfg.maxGuests}</p>
+                      <p className="text-2xl font-bold text-emerald-900">R {cfg.rate.toLocaleString()}<span className="text-lg font-normal text-muted-foreground">/night</span></p>
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
           <div className="mt-4 pt-4 border-t border-border space-y-1 text-sm text-muted-foreground">
             {bookingType === "bungalow" && (
               <p>• Flat rate for up to 16 guests</p>
+            )}
+            {bookingType === "cottage" && (
+              <p>• Nightly rate per cottage, see above (max guests per cottage apply)</p>
             )}
             <p>• Admin approval required for all bookings</p>
             <p>• Payment confirmation required before dates are reserved</p>
@@ -182,6 +259,7 @@ const Index = () => {
               bookingType={bookingType}
               selectedDates={bomaDates}
               onToggleDate={toggleBomaDate}
+              cottageNightlyRate={bookingType === "cottage" ? cottageConfig[selectedCottage].rate : undefined}
             />
             {bookingType === "boma" && (
               <div className="bg-card rounded-lg shadow-md p-6 border border-border/50">
@@ -220,7 +298,24 @@ const Index = () => {
                 )}
               </div>
             )}
-
+            {bookingType === "cottage" && (
+              <div className="bg-card rounded-lg shadow-md p-6 border border-border/50">
+                {(() => {
+                  const cfg = cottageConfig[selectedCottage];
+                  return (
+                    <>
+                      <h3 className="text-xl font-semibold mb-2">{cfg.name}</h3>
+                      <p className="text-sm text-muted-foreground mb-4">{cfg.description}</p>
+                      <div className="mt-auto pt-4 border-t border-border">
+                        <p className="font-semibold text-primary">
+                          Cost: R{cfg.rate.toLocaleString()}.00 <span className="font-normal text-muted-foreground">- per night (max {cfg.maxGuests} guests)</span>
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
 
           </div>
           <div className="flex">
@@ -232,6 +327,7 @@ const Index = () => {
               onBomaDatesChange={setBomaDates}
               type={bookingType}
               selectedBoma={selectedBoma}
+              selectedCottage={selectedCottage}
               onDateChange={(start, end) => {
                 if (start && end && !isNaN(start.getTime()) && !isNaN(end.getTime())) {
                   const s = new Date(start);
@@ -269,7 +365,7 @@ const Index = () => {
       </main>
 
       <footer className="text-center text-xs text-muted-foreground py-6 mt-8">
-        © 2025 Sibon • Sleeps up to 16 guests • Peak: R8,300/night | Low: R4,600/night
+        © 2025 Ingwelala Boma & Cottage Booking
       </footer>
     </div>
   );

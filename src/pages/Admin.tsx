@@ -21,8 +21,9 @@ const Admin = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date(2025, 10)); // November 2025
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [maxCapacityLocal, setMaxCapacityLocal] = useState<number>(16);
-  const [calendarMode, setCalendarMode] = useState<"accommodation" | "boma">("accommodation");
+  const [calendarMode, setCalendarMode] = useState<"boma" | "cottage">("boma");
   const [selectedBoma, setSelectedBoma] = useState<"Argyle" | "Platform" | "Beacon">("Argyle");
+  const [selectedCottage, setSelectedCottage] = useState<"Hornbill Cottage" | "Francolin Cottage" | "Guineafowl Cottage">("Hornbill Cottage");
 
   // Queries
   const settings = useQuery(api.availability.getSettings, {});
@@ -59,17 +60,33 @@ const Admin = () => {
     return Math.max(1, diff);
   };
 
-  const computeTotalCost = (checkIn: string, checkOut: string, bomaDates?: string[]) => {
+  const computeTotalCost = (booking: Doc<"bookings">) => {
+    const { checkIn, checkOut, bomaDates, type, bungalowNumber } = booking;
     if (!checkIn || !checkOut) return 0;
+
     const start = parseLocal(checkIn);
     const end = parseLocal(checkOut);
     let total = 0;
-    const cur = new Date(start);
-    while (cur < end) {
-      const dateStr = toISO(cur);
-      total += isPeakSeason(dateStr) ? 8300 : 4600;
-      cur.setDate(cur.getDate() + 1);
+
+    if (!type || type === "bungalow") {
+      // Sibon bungalow pricing: peak / low season per night
+      const cur = new Date(start);
+      while (cur < end) {
+        const dateStr = toISO(cur);
+        total += isPeakSeason(dateStr) ? 8300 : 4600;
+        cur.setDate(cur.getDate() + 1);
+      }
+    } else if (type === "cottage") {
+      // Cottage pricing: flat nightly rate per cottage
+      const nights = computeNights(checkIn, checkOut);
+      let rate = 0;
+      if (bungalowNumber === "Hornbill Cottage") rate = 1200;
+      else if (bungalowNumber === "Francolin Cottage") rate = 2000;
+      else if (bungalowNumber === "Guineafowl Cottage") rate = 2500;
+      total += nights * rate;
     }
+
+    // Add Argyle Boma add-on for bungalow bookings
     if (bomaDates && bomaDates.length > 0) {
       total += bomaDates.length * 350;
     }
@@ -107,6 +124,10 @@ const Admin = () => {
 
   const accommodationBookings = useMemo(() => {
     return filteredBookings.filter(b => (!b.type || b.type === "bungalow"));
+  }, [filteredBookings]);
+
+  const cottageBookings = useMemo(() => {
+    return filteredBookings.filter(b => b.type === "cottage");
   }, [filteredBookings]);
 
   const bomaBookings = useMemo(() => {
@@ -377,33 +398,28 @@ const Admin = () => {
   const handleBlockDate = async () => {
     try {
       if (selectedDate) {
-        if (calendarMode === "accommodation") {
-          await setDateAvailability({ date: selectedDate, available: 0, adminKey: adminKey ?? undefined });
-        } else {
+        if (calendarMode === "boma") {
           const bomaFieldMap: Record<string, string> = {
             "Argyle": "bomaBlocked",
             "Platform": "platformBlocked",
             "Beacon": "beaconBlocked"
           };
           const blockedField = bomaFieldMap[selectedBoma] || "bomaBlocked";
-          // We need to pass the specific field to the mutation.
-          // Currently setDateAvailability takes specific named args.
-          // I need to update the mutation call to match the schema.
-          // The mutation args are: bomaBlocked, platformBlocked, beaconBlocked?
-          // Let's check convex/availability.ts. It only has bomaBlocked in args definition in the file content I read?
-          // Wait, I read availability.ts earlier.
-          // Line 58: bomaBlocked: v.optional(v.boolean()),
-          // It does NOT have platformBlocked or beaconBlocked in arguments!
-          // I need to update convex/availability.ts FIRST.
-          // But wait, I can use `await ctx.db.patch` in the mutation if I update the mutation to accept them.
-          // I will assume I need to update availability.ts.
-          // For now, let's write the Admin.tsx code assuming availability.ts will be updated.
-          
+          const args: any = { date: selectedDate, adminKey: adminKey ?? undefined };
+          args[blockedField] = true;
+          await setDateAvailability(args);
+        } else if (calendarMode === "cottage") {
+          const cottageFieldMap: Record<string, string> = {
+            "Hornbill Cottage": "hornbillBlocked",
+            "Francolin Cottage": "francolinBlocked",
+            "Guineafowl Cottage": "guineafowlBlocked"
+          };
+          const blockedField = cottageFieldMap[selectedCottage] || "hornbillBlocked";
           const args: any = { date: selectedDate, adminKey: adminKey ?? undefined };
           args[blockedField] = true;
           await setDateAvailability(args);
         }
-        toast.success(`${calendarMode === "accommodation" ? "Accommodation" : selectedBoma} blocked`);
+        toast.success(`${calendarMode === "boma" ? selectedBoma : selectedCottage} blocked`);
         setIsCalendarDialogOpen(false);
       }
     } catch (error: any) {
@@ -420,10 +436,7 @@ const Admin = () => {
   const handleUnblockDate = async () => {
     try {
       if (selectedDate) {
-        if (calendarMode === "accommodation") {
-          const max = maxCapacity;
-          await setDateAvailability({ date: selectedDate, available: max, adminKey: adminKey ?? undefined });
-        } else {
+        if (calendarMode === "boma") {
           const bomaFieldMap: Record<string, string> = {
             "Argyle": "bomaBlocked",
             "Platform": "platformBlocked",
@@ -434,8 +447,18 @@ const Admin = () => {
           const args: any = { date: selectedDate, adminKey: adminKey ?? undefined };
           args[blockedField] = false;
           await setDateAvailability(args);
+        } else if (calendarMode === "cottage") {
+          const cottageFieldMap: Record<string, string> = {
+            "Hornbill Cottage": "hornbillBlocked",
+            "Francolin Cottage": "francolinBlocked",
+            "Guineafowl Cottage": "guineafowlBlocked"
+          };
+          const blockedField = cottageFieldMap[selectedCottage] || "hornbillBlocked";
+          const args: any = { date: selectedDate, adminKey: adminKey ?? undefined };
+          args[blockedField] = false;
+          await setDateAvailability(args);
         }
-        toast.success(`${calendarMode === "accommodation" ? "Accommodation" : selectedBoma} unblocked`);
+        toast.success(`${calendarMode === "boma" ? selectedBoma : selectedCottage} unblocked`);
         setIsCalendarDialogOpen(false);
       }
     } catch (error: any) {
@@ -458,7 +481,7 @@ const Admin = () => {
           <img src="/ingwelala-logo.jpeg" alt="Ingwelala Logo" className="h-14 w-14 rounded-lg bg-white p-1 object-contain" />
           <div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            <p className="text-sm opacity-90 mt-1">Manage bookings and availability for Sibon</p>
+            <p className="text-sm opacity-90 mt-1">Manage bookings and availability for Ingwelala Boma Booking</p>
           </div>
         </div>
       </header>
@@ -559,16 +582,16 @@ const Admin = () => {
             <div className="flex items-center space-x-2">
               <div className="bg-secondary rounded-lg p-1 flex text-sm">
                 <button
-                  onClick={() => setCalendarMode("accommodation")}
-                  className={`px-3 py-1.5 rounded-md transition-all ${calendarMode === "accommodation" ? "bg-background shadow text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  Accommodation
-                </button>
-                <button
                   onClick={() => setCalendarMode("boma")}
                   className={`px-3 py-1.5 rounded-md transition-all ${calendarMode === "boma" ? "bg-background shadow text-orange-700 font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   Boma
+                </button>
+                <button
+                  onClick={() => setCalendarMode("cottage")}
+                  className={`px-3 py-1.5 rounded-md transition-all ${calendarMode === "cottage" ? "bg-background shadow text-emerald-700 font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Cottages
                 </button>
               </div>
               {calendarMode === "boma" && (
@@ -590,6 +613,28 @@ const Admin = () => {
                     className={`px-3 py-1.5 rounded-md transition-all ${selectedBoma === "Beacon" ? "bg-background shadow text-orange-700 font-medium" : "text-muted-foreground hover:text-foreground"}`}
                   >
                     Beacon
+                  </button>
+                </div>
+              )}
+              {calendarMode === "cottage" && (
+                <div className="bg-secondary rounded-lg p-1 flex text-sm ml-2">
+                  <button
+                    onClick={() => setSelectedCottage("Hornbill Cottage")}
+                    className={`px-3 py-1.5 rounded-md transition-all ${selectedCottage === "Hornbill Cottage" ? "bg-background shadow text-emerald-700 font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Hornbill
+                  </button>
+                  <button
+                    onClick={() => setSelectedCottage("Francolin Cottage")}
+                    className={`px-3 py-1.5 rounded-md transition-all ${selectedCottage === "Francolin Cottage" ? "bg-background shadow text-emerald-700 font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Francolin
+                  </button>
+                  <button
+                    onClick={() => setSelectedCottage("Guineafowl Cottage")}
+                    className={`px-3 py-1.5 rounded-md transition-all ${selectedCottage === "Guineafowl Cottage" ? "bg-background shadow text-emerald-700 font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Guineafowl
                   </button>
                 </div>
               )}
@@ -630,18 +675,28 @@ const Admin = () => {
               const dateAvail = availability[day.date];
               const isAccommodationBlocked = dateAvail?.blocked || dateAvail?.available === 0;
               
-              const bomaFieldMap: Record<string, string> = {
-                "Argyle": "bomaBlocked",
-                "Platform": "platformBlocked",
-                "Beacon": "beaconBlocked"
-              };
-              const blockedField = bomaFieldMap[selectedBoma] || "bomaBlocked";
-              const isBomaBlocked = (dateAvail as any)?.[blockedField];
+              let isBlocked = false;
+              if (calendarMode === "boma") {
+                const bomaFieldMap: Record<string, string> = {
+                  "Argyle": "bomaBlocked",
+                  "Platform": "platformBlocked",
+                  "Beacon": "beaconBlocked"
+                };
+                const blockedField = bomaFieldMap[selectedBoma] || "bomaBlocked";
+                isBlocked = (dateAvail as any)?.[blockedField];
+              } else if (calendarMode === "cottage") {
+                const cottageFieldMap: Record<string, string> = {
+                  "Hornbill Cottage": "hornbillBlocked",
+                  "Francolin Cottage": "francolinBlocked",
+                  "Guineafowl Cottage": "guineafowlBlocked"
+                };
+                const blockedField = cottageFieldMap[selectedCottage] || "hornbillBlocked";
+                isBlocked = (dateAvail as any)?.[blockedField];
+              }
 
-              const isBlocked = calendarMode === "accommodation" ? isAccommodationBlocked : isBomaBlocked;
               const bgColor = isBlocked 
-                ? (calendarMode === "accommodation" ? "bg-unavailable" : "bg-orange-200")
-                : (calendarMode === "accommodation" ? "bg-available/30 hover:bg-available/50" : "bg-background border border-orange-100 hover:bg-orange-50");
+                ? (calendarMode === "boma" ? "bg-orange-200" : "bg-emerald-200")
+                : (calendarMode === "boma" ? "bg-background border border-orange-100 hover:bg-orange-50" : "bg-background border border-emerald-100 hover:bg-emerald-50");
 
               return (
                 <button
@@ -651,7 +706,7 @@ const Admin = () => {
                 >
                   <div className="font-semibold">{day.day}</div>
                   {isBlocked && (
-                    <div className={`text-xs mt-1 flex items-center justify-center ${calendarMode === "accommodation" ? "text-destructive" : "text-orange-700"}`}>
+                    <div className={`text-xs mt-1 flex items-center justify-center ${calendarMode === "boma" ? "text-orange-700" : "text-emerald-700"}`}>
                       <Lock className="h-3 w-3" />
                     </div>
                   )}
@@ -662,18 +717,7 @@ const Admin = () => {
 
           <div className="mt-6 pt-4 border-t border-border flex items-center justify-between text-sm">
             <div className="flex items-center gap-6">
-              {calendarMode === "accommodation" ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-available/30" />
-                    <span>Available</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-unavailable" />
-                    <span>Blocked</span>
-                  </div>
-                </>
-              ) : (
+              {calendarMode === "boma" ? (
                 <>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded border border-orange-100 bg-background" />
@@ -684,13 +728,24 @@ const Admin = () => {
                     <span>Boma Booked/Blocked</span>
                   </div>
                 </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded border border-emerald-100 bg-background" />
+                    <span>Available</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-emerald-200" />
+                    <span>Cottage Booked/Blocked</span>
+                  </div>
+                </>
               )}
             </div>
           </div>
         </div>
 
           {/* Accommodation Bookings Table */}
-          <div className="bg-card rounded-lg shadow-md p-6 mb-8">
+          <div className="bg-card rounded-lg shadow-md p-6 mb-8 hidden">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <h2 className="text-2xl font-semibold">Accommodation Requests</h2>
               <div className="relative w-full sm:w-64">
@@ -743,7 +798,110 @@ const Admin = () => {
                         <TableCell>{formatDDMMYYYY(booking.checkOut)}</TableCell>
                         <TableCell>
                           <div className="flex flex-col text-right">
-                            <span className="font-semibold text-hero-brown">R {computeTotalCost(booking.checkIn, booking.checkOut, booking.bomaDates).toLocaleString()}</span>
+                            <span className="font-semibold text-hero-brown">R {computeTotalCost(booking).toLocaleString()}</span>
+                            <span className="text-xs text-muted-foreground">{computeNights(booking.checkIn, booking.checkOut)} night(s)</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(booking.status)}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline">Actions</Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              {booking.status === "pending" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleApprove(booking._id)}>
+                                    <CheckCircle className="h-4 w-4 mr-2" /> Approve
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleReject(booking._id)} className="text-destructive">
+                                    <XCircle className="h-4 w-4 mr-2" /> Reject
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              {booking.status === "approved" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleRequestPayment(booking._id)}>
+                                    <Send className="h-4 w-4 mr-2" /> Request Payment
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              {booking.status === "payment_requested" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handlePaymentReceived(booking._id)}>
+                                    <DollarSign className="h-4 w-4 mr-2" /> Mark Payment Received
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              {booking.status === "payment_received" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleConfirm(booking._id)}>
+                                    <Check className="h-4 w-4 mr-2" /> Confirm Booking
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              {booking.status === "confirmed" && !booking.stayCompletedAt && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleCompleteStay(booking._id)}>
+                                    <CheckCircle className="h-4 w-4 mr-2" /> Complete Stay
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              <DropdownMenuItem onClick={() => handleEditBooking(booking)}>
+                                <Edit className="h-4 w-4 mr-2" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDelete(booking._id)} className="text-destructive">
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {/* Cottage Bookings Table */}
+          <div className="bg-card rounded-lg shadow-md p-6 mb-8">
+            <h2 className="text-2xl font-semibold mb-6">Cottage Requests</h2>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Guest Name</TableHead>
+                    <TableHead>Cottage</TableHead>
+                    <TableHead>Check-in</TableHead>
+                    <TableHead>Check-out</TableHead>
+                    <TableHead>Total Price</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cottageBookings.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No cottage bookings found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    cottageBookings.map((booking: Doc<"bookings">) => (
+                      <TableRow key={booking._id}>
+                        <TableCell className="font-medium">{booking.userName ?? "-"}</TableCell>
+                        <TableCell>{booking.bungalowNumber ?? "-"}</TableCell>
+                        <TableCell>{formatDDMMYYYY(booking.checkIn)}</TableCell>
+                        <TableCell>{formatDDMMYYYY(booking.checkOut)}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col text-right">
+                            <span className="font-semibold text-hero-brown">R {computeTotalCost(booking).toLocaleString()}</span>
                             <span className="text-xs text-muted-foreground">{computeNights(booking.checkIn, booking.checkOut)} night(s)</span>
                           </div>
                         </TableCell>
@@ -960,9 +1118,7 @@ const Admin = () => {
               <p className="text-sm text-muted-foreground">
                 {(() => {
                   const av = availability[selectedDate];
-                  if (calendarMode === "accommodation") {
-                    return (av?.blocked || av?.available === 0) ? "Accommodation is currently blocked." : "Accommodation is currently available.";
-                  } else {
+                  if (calendarMode === "boma") {
                     const bomaFieldMap: Record<string, string> = {
                       "Argyle": "bomaBlocked",
                       "Platform": "platformBlocked",
@@ -972,6 +1128,16 @@ const Admin = () => {
                     const isBomaBlocked = (av as any)?.[blockedField];
                     
                     return isBomaBlocked ? `${selectedBoma} is currently blocked.` : `${selectedBoma} is currently available.`;
+                  } else {
+                    const cottageFieldMap: Record<string, string> = {
+                      "Hornbill Cottage": "hornbillBlocked",
+                      "Francolin Cottage": "francolinBlocked",
+                      "Guineafowl Cottage": "guineafowlBlocked"
+                    };
+                    const blockedField = cottageFieldMap[selectedCottage] || "hornbillBlocked";
+                    const isCottageBlocked = (av as any)?.[blockedField];
+                    
+                    return isCottageBlocked ? `${selectedCottage} is currently blocked.` : `${selectedCottage} is currently available.`;
                   }
                 })()}
               </p>
@@ -979,15 +1145,15 @@ const Admin = () => {
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             {selectedDate && (
-              (calendarMode === "accommodation" && (availability[selectedDate]?.blocked || availability[selectedDate]?.available === 0)) ||
-              (calendarMode === "boma" && (availability[selectedDate] as any)?.[(selectedBoma === "Argyle" ? "bomaBlocked" : selectedBoma === "Platform" ? "platformBlocked" : "beaconBlocked")])
+              (calendarMode === "boma" && (availability[selectedDate] as any)?.[(selectedBoma === "Argyle" ? "bomaBlocked" : selectedBoma === "Platform" ? "platformBlocked" : "beaconBlocked")]) ||
+              (calendarMode === "cottage" && (availability[selectedDate] as any)?.[(selectedCottage === "Hornbill Cottage" ? "hornbillBlocked" : selectedCottage === "Francolin Cottage" ? "francolinBlocked" : "guineafowlBlocked")])
             ) ? (
               <Button onClick={handleUnblockDate} className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
-                Unblock {calendarMode === "accommodation" ? "Date" : selectedBoma}
+                Unblock {calendarMode === "boma" ? selectedBoma : selectedCottage}
               </Button>
             ) : (
               <Button variant="destructive" onClick={handleBlockDate} className="w-full sm:w-auto">
-                <Lock className="h-4 w-4 mr-2" /> Block {calendarMode === "accommodation" ? "Date" : selectedBoma}
+                <Lock className="h-4 w-4 mr-2" /> Block {calendarMode === "boma" ? selectedBoma : selectedCottage}
               </Button>
             )}
             <Button variant="outline" onClick={() => setIsCalendarDialogOpen(false)} className="w-full sm:w-auto">
@@ -1007,47 +1173,74 @@ const Admin = () => {
           {selectedBooking && (
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-checkin">Check-in</Label>
-                  <Input
-                    id="edit-checkin"
-                    type="date"
-                    value={selectedBooking.checkIn}
-                    min={toISO(new Date())}
-                    onChange={(e) => {
-                      const newIn = e.target.value;
-                      let newOut = selectedBooking.checkOut;
-                      const di = parseLocal(newIn);
-                      const do_ = parseLocal(newOut);
-                      if (!isNaN(di.getTime()) && !isNaN(do_.getTime()) && do_ <= di) {
-                        const adj = new Date(di);
-                        adj.setDate(adj.getDate() + 1);
-                        newOut = toISO(adj);
-                      }
-                      setSelectedBooking({ ...selectedBooking, checkIn: newIn, checkOut: newOut });
-                    }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-checkout">Check-out</Label>
-                  <Input
-                    id="edit-checkout"
-                    type="date"
-                    value={selectedBooking.checkOut}
-                    min={selectedBooking.checkIn}
-                    onChange={(e) => {
-                      let newOut = e.target.value;
-                      const di = parseLocal(selectedBooking.checkIn);
-                      const do_ = parseLocal(newOut);
-                      if (!isNaN(di.getTime()) && !isNaN(do_.getTime()) && do_ <= di) {
-                        const adj = new Date(di);
-                        adj.setDate(adj.getDate() + 1);
-                        newOut = toISO(adj);
-                      }
-                      setSelectedBooking({ ...selectedBooking, checkOut: newOut });
-                    }}
-                  />
-                </div>
+                {selectedBooking.type === "boma" ? (
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="edit-checkin">Date</Label>
+                    <Input
+                      id="edit-checkin"
+                      type="date"
+                      value={selectedBooking.checkIn}
+                      min={toISO(new Date())}
+                      onChange={(e) => {
+                        const newDate = e.target.value;
+                        const d = parseLocal(newDate);
+                        if (!isNaN(d.getTime())) {
+                          // For Boma single day, update both checkIn and checkOut
+                          // checkOut is typically next day for logic consistency, or same day if logic supports it
+                          // Current logic uses checkIn -> checkOut range.
+                          // Boma single day usually implies checkIn=Date, checkOut=NextDate.
+                          const nextDay = new Date(d);
+                          nextDay.setDate(d.getDate() + 1);
+                          setSelectedBooking({ ...selectedBooking, checkIn: newDate, checkOut: toISO(nextDay) });
+                        }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-checkin">Check-in</Label>
+                      <Input
+                        id="edit-checkin"
+                        type="date"
+                        value={selectedBooking.checkIn}
+                        min={toISO(new Date())}
+                        onChange={(e) => {
+                          const newIn = e.target.value;
+                          let newOut = selectedBooking.checkOut;
+                          const di = parseLocal(newIn);
+                          const do_ = parseLocal(newOut);
+                          if (!isNaN(di.getTime()) && !isNaN(do_.getTime()) && do_ <= di) {
+                            const adj = new Date(di);
+                            adj.setDate(adj.getDate() + 1);
+                            newOut = toISO(adj);
+                          }
+                          setSelectedBooking({ ...selectedBooking, checkIn: newIn, checkOut: newOut });
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-checkout">Check-out</Label>
+                      <Input
+                        id="edit-checkout"
+                        type="date"
+                        value={selectedBooking.checkOut}
+                        min={selectedBooking.checkIn}
+                        onChange={(e) => {
+                          let newOut = e.target.value;
+                          const di = parseLocal(selectedBooking.checkIn);
+                          const do_ = parseLocal(newOut);
+                          if (!isNaN(di.getTime()) && !isNaN(do_.getTime()) && do_ <= di) {
+                            const adj = new Date(di);
+                            adj.setDate(adj.getDate() + 1);
+                            newOut = toISO(adj);
+                          }
+                          setSelectedBooking({ ...selectedBooking, checkOut: newOut });
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-guests">Number of Guests</Label>

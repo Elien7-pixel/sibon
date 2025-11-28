@@ -35,7 +35,7 @@ export const getMonthAvailability = query({
     // Pull all dates for the month
     const results = await ctx.db.query("availability").collect();
     const prefix = `${year}-${String(month).padStart(2, "0")}-`;
-    const byDate: Record<string, { available: number; blocked: boolean; bomaBlocked?: boolean; platformBlocked?: boolean; beaconBlocked?: boolean; seasonType?: "peak" | "offpeak" }> = {};
+    const byDate: Record<string, { available: number; blocked: boolean; bomaBlocked?: boolean; platformBlocked?: boolean; beaconBlocked?: boolean; hornbillBlocked?: boolean; francolinBlocked?: boolean; guineafowlBlocked?: boolean; seasonType?: "peak" | "offpeak" }> = {};
     for (const r of results) {
       if (r.date.startsWith(prefix)) {
         byDate[r.date] = { 
@@ -44,6 +44,9 @@ export const getMonthAvailability = query({
           bomaBlocked: r.bomaBlocked,
           platformBlocked: r.platformBlocked,
           beaconBlocked: r.beaconBlocked,
+          hornbillBlocked: r.hornbillBlocked,
+          francolinBlocked: r.francolinBlocked,
+          guineafowlBlocked: r.guineafowlBlocked,
           seasonType: r.seasonType 
         };
       }
@@ -60,10 +63,13 @@ export const setDateAvailability = mutation({
     bomaBlocked: v.optional(v.boolean()),
     platformBlocked: v.optional(v.boolean()),
     beaconBlocked: v.optional(v.boolean()),
+    hornbillBlocked: v.optional(v.boolean()),
+    francolinBlocked: v.optional(v.boolean()),
+    guineafowlBlocked: v.optional(v.boolean()),
     seasonType: v.optional(v.union(v.literal("peak"), v.literal("offpeak"))),
     adminKey: v.optional(v.string()) 
   },
-  handler: async (ctx, { date, available, blocked, bomaBlocked, platformBlocked, beaconBlocked, seasonType, adminKey }) => {
+  handler: async (ctx, { date, available, blocked, bomaBlocked, platformBlocked, beaconBlocked, hornbillBlocked, francolinBlocked, guineafowlBlocked, seasonType, adminKey }) => {
     const settings = await ctx.db
       .query("settings")
       .withIndex("by_key", (q) => q.eq("key", "global"))
@@ -90,6 +96,9 @@ export const setDateAvailability = mutation({
       if (bomaBlocked !== undefined) updates.bomaBlocked = bomaBlocked;
       if (platformBlocked !== undefined) updates.platformBlocked = platformBlocked;
       if (beaconBlocked !== undefined) updates.beaconBlocked = beaconBlocked;
+      if (hornbillBlocked !== undefined) updates.hornbillBlocked = hornbillBlocked;
+      if (francolinBlocked !== undefined) updates.francolinBlocked = francolinBlocked;
+      if (guineafowlBlocked !== undefined) updates.guineafowlBlocked = guineafowlBlocked;
       if (seasonType !== undefined) updates.seasonType = seasonType;
 
       await ctx.db.patch(existing._id, updates);
@@ -103,6 +112,9 @@ export const setDateAvailability = mutation({
         bomaBlocked: bomaBlocked ?? false,
         platformBlocked: platformBlocked ?? false,
         beaconBlocked: beaconBlocked ?? false,
+        hornbillBlocked: hornbillBlocked ?? false,
+        francolinBlocked: francolinBlocked ?? false,
+        guineafowlBlocked: guineafowlBlocked ?? false,
         seasonType 
       });
     }

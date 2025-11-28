@@ -21,11 +21,12 @@ type Props = {
   onDateChange?: (start: Date, end: Date) => void;
   bomaDates: string[];
   onBomaDatesChange: (dates: string[]) => void;
-  type?: "bungalow" | "boma";
+  type?: "boma" | "cottage";
   selectedBoma?: "Argyle" | "Platform" | "Beacon";
+  selectedCottage?: "Hornbill" | "Francolin" | "Guineafowl";
 };
 
-const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBomaDatesChange, type = "bungalow", selectedBoma = "Argyle" }: Props) => {
+const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBomaDatesChange, type = "boma", selectedBoma = "Argyle", selectedCottage }: Props) => {
   const [notes, setNotes] = useState("");
   const [name, setName] = useState("");
   const [bungalowNumber, setBungalowNumber] = useState("");
@@ -89,10 +90,16 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
     }
     setSubmitting(true);
     try {
+      const cottageName = selectedCottage === "Hornbill" ? "Hornbill Cottage" : selectedCottage === "Francolin" ? "Francolin Cottage" : selectedCottage === "Guineafowl" ? "Guineafowl Cottage" : undefined;
       await createBooking({
         checkIn,
         checkOut,
-        bungalowNumber: type === "boma" ? selectedBoma : bungalowNumber,
+        bungalowNumber:
+          type === "boma"
+            ? selectedBoma
+            : type === "cottage" && cottageName
+            ? cottageName
+            : bungalowNumber,
         userType,
         notes: notes || undefined,
         userName: name,
@@ -118,10 +125,12 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
 
   return (
     <div className="bg-card p-6 rounded-lg shadow-md w-full flex flex-col">
-      <h2 className="text-xl font-semibold mb-6">{type === "boma" ? "Book Boma" : "Book Sibon"}</h2>
+      <h2 className="text-xl font-semibold mb-6">
+        {type === "boma" ? "Book Boma" : "Book Ingwelala Cottage"}
+      </h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {type === "bungalow" && (
+        {type === "cottage" && (
           <>
             <div>
               <label htmlFor="arrivalDate" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
@@ -177,29 +186,43 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
           <Input id="name" type="text" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} className="bg-background" required />
         </div>
 
-        <div>
-          <label htmlFor="bungalowNumber" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
-            <Home className="h-4 w-4 mr-2 text-muted-foreground" />
-            Bungalow Number
-          </label>
-          <Input id="bungalowNumber" type="text" placeholder="e.g., B12" value={bungalowNumber} onChange={(e) => setBungalowNumber(e.target.value)} className="bg-background" required />
-        </div>
+        {type === "boma" || type === "cottage" ? (
+          <></>
+        ) : (
+          <div>
+            <label htmlFor="bungalowNumber" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
+              <Home className="h-4 w-4 mr-2 text-muted-foreground" />
+              Bungalow Number
+            </label>
+            <Input
+              id="bungalowNumber"
+              type="text"
+              placeholder="e.g., B12"
+              value={bungalowNumber}
+              onChange={(e) => setBungalowNumber(e.target.value)}
+              className="bg-background"
+              required
+            />
+          </div>
+        )}
 
-        <div>
-          <label htmlFor="userType" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
-            <Shield className="h-4 w-4 mr-2 text-muted-foreground" />
-            Status
-          </label>
-          <Select value={userType} onValueChange={(value: "owner" | "registered") => setUserType(value)}>
-            <SelectTrigger className="bg-background">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="owner">Owner</SelectItem>
-              <SelectItem value="registered">Registered User</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {type === "bungalow" && (
+          <div>
+            <label htmlFor="userType" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
+              <Shield className="h-4 w-4 mr-2 text-muted-foreground" />
+              Status
+            </label>
+            <Select value={userType} onValueChange={(value: "owner" | "registered") => setUserType(value)}>
+              <SelectTrigger className="bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="owner">Owner</SelectItem>
+                <SelectItem value="registered">Registered User</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div>
           <label htmlFor="notes" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
@@ -238,28 +261,44 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-available-foreground" />
-              {type === "boma" ? "Boma Request Sent" : "Booking Request Sent"}
+              {type === "boma" ? "Boma Request Sent" : type === "cottage" ? "Cottage Booking Request Sent" : "Booking Request Sent"}
             </DialogTitle>
             <DialogDescription>
-              {type === "boma" 
+              {type === "boma"
                 ? `Thanks ${name || ""}! Your Boma request has been received and will be reviewed shortly.`
+                : type === "cottage"
+                ? `Thanks ${name || ""}! Your cottage booking request has been received and will be reviewed shortly.`
                 : `Thanks ${name || ""}! We’ve received your request and an admin will review it shortly.`}
             </DialogDescription>
           </DialogHeader>
           <div className="bg-secondary rounded-md p-4 text-sm">
             {type === "boma" ? (
               <>
-                <div className="flex justify-between"><span className="text-muted-foreground">Boma</span><span className="font-medium">{bungalowNumber || selectedBoma}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Boma</span><span className="font-medium">{selectedBoma}</span></div>
                 <div className="flex justify-between mt-1"><span className="text-muted-foreground">Dates</span><span className="font-medium">{formatDDMMYYYY(parseLocalDate(checkIn))} - {formatDDMMYYYY(parseLocalDate(checkOut))}</span></div>
-                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Status</span><span className="font-medium">Registered User</span></div>
                 <div className="flex justify-between mt-1"><span className="text-muted-foreground">Total Cost</span><span className="font-medium text-primary">R {((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)) * 350}</span></div>
               </>
             ) : (
               <>
                 <div className="flex justify-between"><span className="text-muted-foreground">Arrival</span><span className="font-medium">{formatDDMMYYYY(parseLocalDate(checkIn))}</span></div>
                 <div className="flex justify-between mt-1"><span className="text-muted-foreground">Departure</span><span className="font-medium">{formatDDMMYYYY(parseLocalDate(checkOut))}</span></div>
-                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Bungalow</span><span className="font-medium">{bungalowNumber}</span></div>
-                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Status</span><span className="font-medium">{userType === "owner" ? "Owner" : "Registered User"}</span></div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-muted-foreground">Cottage</span>
+                  <span className="font-medium">
+                    {type === "cottage"
+                      ? (selectedCottage === "Hornbill"
+                          ? "Hornbill Cottage"
+                          : selectedCottage === "Francolin"
+                          ? "Francolin Cottage"
+                          : selectedCottage === "Guineafowl"
+                          ? "Guineafowl Cottage"
+                          : "Cottage")
+                      : bungalowNumber}
+                  </span>
+                </div>
+                {type === "bungalow" && (
+                  <div className="flex justify-between mt-1"><span className="text-muted-foreground">Status</span><span className="font-medium">{userType === "owner" ? "Owner" : "Registered User"}</span></div>
+                )}
                 {bomaDates.length > 0 && (
                   <div className="flex justify-between mt-1">
                     <span className="text-muted-foreground">Argyle Boma</span>

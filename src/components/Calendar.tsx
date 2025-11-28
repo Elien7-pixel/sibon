@@ -24,12 +24,13 @@ type Props = {
   maxCapacity?: number;
   onMonthChange?: (year: number, month: number) => void; // month 1-12
   bomaCost?: number;
-  bookingType?: "bungalow" | "boma";
+  bookingType?: "bungalow" | "boma" | "cottage";
   selectedDates?: string[];
   onToggleDate?: (date: string) => void;
+  cottageNightlyRate?: number;
 };
 
-const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}, maxCapacity = 16, onMonthChange, bomaCost = 0, bookingType = "bungalow", selectedDates = [], onToggleDate }: Props) => {
+const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}, maxCapacity = 16, onMonthChange, bomaCost = 0, bookingType = "bungalow", selectedDates = [], onToggleDate, cottageNightlyRate }: Props) => {
   const today = new Date();
   const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [tempStart, setTempStart] = useState<Date | null>(null);
@@ -138,7 +139,7 @@ const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}
       const isPast = currentDay < todayStart;
       const available = isPast ? 0 : (typeof dayData === 'number' ? dayData : (dayData?.available ?? maxCapacity));
 
-      // Determine season using SA holidays logic
+      // Determine season using SA holidays logic (Sibon only)
       let seasonType: "peak" | "offpeak" | undefined = typeof dayData === 'object' ? dayData?.seasonType : undefined;
 
       if (!seasonType && !isPast && bookingType === "bungalow") {
@@ -198,7 +199,7 @@ const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}
 
     let classes = "p-2 text-center cursor-pointer transition-colors ";
 
-    // Determine background color based on season
+    // Determine background color based on season / type
     let bgColor = "bg-available "; // default
     if (bookingType === "bungalow") {
       if (day.seasonType === "peak") {
@@ -209,6 +210,8 @@ const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}
     } else if (bookingType === "boma") {
       // For Boma, just use a nice neutral or specific color for available
       bgColor = "bg-orange-100 hover:bg-orange-200 ";
+    } else if (bookingType === "cottage") {
+      bgColor = "bg-emerald-100 hover:bg-emerald-200 ";
     }
 
     if (isInRange) {
@@ -239,14 +242,25 @@ const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}
     return Math.max(1, diff);
   })();
 
-  // Calculate total cost based on peak/low season days
+  // Calculate total cost
   const calculateTotalCost = () => {
     if (!selectedRange.startDate || !selectedRange.endDate) return 0;
 
-    let total = 0;
+    // Nights between start and end
     const current = new Date(selectedRange.startDate);
     const end = new Date(selectedRange.endDate);
 
+    if (bookingType === "cottage" && cottageNightlyRate) {
+      let nightsCount = 0;
+      while (current < end) {
+        nightsCount += 1;
+        current.setDate(current.getDate() + 1);
+      }
+      return nightsCount * cottageNightlyRate;
+    }
+
+    // Default Sibon bungalow pricing (peak / low season)
+    let total = 0;
     while (current < end) {
       const dateStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
       const isPeak = isPeakSeason(dateStr);
@@ -257,7 +271,7 @@ const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}
     return total;
   };
 
-  const accommodationCost = bookingType === "bungalow" ? calculateTotalCost() : 0;
+  const accommodationCost = bookingType === "bungalow" || bookingType === "cottage" ? calculateTotalCost() : 0;
   const totalCost = accommodationCost + bomaCost;
 
   return (
@@ -313,7 +327,7 @@ const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}
                 {day.seasonType === "peak" ? "Peak" : day.seasonType === "offpeak" ? "Low" : "Available"}
               </div>
             )}
-            {day.isCurrentMonth && day.available > 0 && bookingType === "boma" && (
+            {day.isCurrentMonth && day.available > 0 && bookingType !== "bungalow" && (
               <div className={`text-xs mt-1 ${isSelected(day.date) ? "text-gray-900" : "text-gray-700"}`}>
                 Available
               </div>
@@ -346,12 +360,18 @@ const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}
             <span className="text-muted-foreground">Available</span>
           </div>
         )}
+        {bookingType === "cottage" && (
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-emerald-100"></div>
+            <span className="text-muted-foreground">Available</span>
+          </div>
+        )}
       </div>
 
       <div className="mt-6 border-t border-border pt-4 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-4 text-sm">
           <div className="flex items-center space-x-4">
-            {bookingType === "bungalow" && (
+            {(bookingType === "bungalow" || bookingType === "cottage") && (
               <div className="flex items-center space-x-2">
                 <Moon className="h-5 w-5 text-accent" />
                 <span className="font-medium">{nights} night{nights > 1 ? "s" : ""}</span>
