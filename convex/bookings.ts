@@ -17,6 +17,7 @@ export const createBooking = mutation({
     checkIn: v.string(), // YYYY-MM-DD
     checkOut: v.string(),
     bungalowNumber: v.string(),
+    unitName: v.optional(v.string()),
     userType: v.union(v.literal("owner"), v.literal("registered")),
     notes: v.optional(v.string()),
     userEmail: v.optional(v.string()),
@@ -24,12 +25,13 @@ export const createBooking = mutation({
     bomaDates: v.optional(v.array(v.string())),
     type: v.optional(v.union(v.literal("bungalow"), v.literal("boma"), v.literal("cottage"))),
   },
-  handler: async (ctx, { checkIn, checkOut, bungalowNumber, userType, notes, userEmail, userName, bomaDates, type }) => {
+  handler: async (ctx, { checkIn, checkOut, bungalowNumber, unitName, userType, notes, userEmail, userName, bomaDates, type }) => {
     const bookingType = type ?? "bungalow";
 
     if (bookingType === "boma") {
-      // Boma-specific validation - bungalowNumber contains the boma name
-      const bomaName = bungalowNumber || "Argyle";
+      // Boma-specific validation
+      // For Boma, 'unitName' carries the boma name (e.g. "Argyle"), 'bungalowNumber' is the user's residence
+      const bomaName = unitName || "Argyle";
       const checkInDate = new Date(checkIn);
       const checkOutDate = new Date(checkOut);
 
@@ -57,7 +59,8 @@ export const createBooking = mutation({
         userId: `boma-${createdAt}`,
         userEmail,
         userName,
-        bungalowNumber: bomaName,
+        bungalowNumber, // User's bungalow
+        unitName: bomaName, // Booked Boma
         userType: "registered",
         checkIn,
         checkOut,
@@ -69,10 +72,11 @@ export const createBooking = mutation({
     }
 
     if (bookingType === "cottage") {
-      // Cottage-specific validation: prevent overlapping bookings for the same cottage
+      // Cottage-specific validation
       const newStart = new Date(checkIn);
       const newEnd = new Date(checkOut);
-      const cottageName = bungalowNumber; // e.g. "Hornbill Cottage"
+      // For Cottage, 'unitName' carries the cottage name
+      const cottageName = unitName || "Hornbill Cottage"; 
 
       // Check availability table for manual blocks
       const cottageFieldMap: Record<string, string> = {
@@ -98,11 +102,23 @@ export const createBooking = mutation({
 
       const existingCottageBookings = await ctx.db
         .query("bookings")
-        .withIndex("by_bungalow", (q) => q.eq("bungalowNumber", bungalowNumber))
+        .withIndex("by_bungalow", (q) => q.eq("bungalowNumber", bungalowNumber)) // This might be checking user bungalow, not unit. 
+        // Actually, we need to check overlaps on the UNIT.
+        // The schema index "by_bungalow" indexes the `bungalowNumber` field. 
+        // Since we are changing `bungalowNumber` to mean "User's Bungalow", this index is no longer sufficient for checking unit availability efficiently 
+        // UNLESS we add an index on `unitName`.
+        // For now, let's fetch all cottages and filter in memory (assuming low volume) or rely on availability table blocks.
+        // Better: Rely on availability table flags which we set on approval. 
+        // BUT for immediate "double booking" check on creation, we should check if another booking exists for this unitName.
         .collect();
+        
+      // Let's fetch all bookings for this time range/type instead to be safe? 
+      // Or just trust the manual block logic below? 
+      // Let's iterate all active cottage bookings to check unit overlap.
+      const allCottageBookings = await ctx.db.query("bookings").filter(q => q.eq(q.field("type"), "cottage")).collect();
 
-      const overlaps = existingCottageBookings.find((booking) => {
-        if (booking.type !== "cottage") return false;
+      const overlaps = allCottageBookings.find((booking) => {
+        if (booking.unitName !== cottageName) return false; // Check specific unit
         if (["rejected"].includes(booking.status)) return false;
         const existingStart = new Date(booking.checkIn);
         const existingEnd = new Date(booking.checkOut);
@@ -119,7 +135,8 @@ export const createBooking = mutation({
         userId: `cottage-${bungalowNumber}`,
         userEmail,
         userName,
-        bungalowNumber,
+        bungalowNumber, // User's bungalow
+        unitName: cottageName, // Booked Cottage
         userType,
         checkIn,
         checkOut,
@@ -257,7 +274,8 @@ export const updateStatus = mutation({
 
         if (booking.type === "boma") {
           // For Boma bookings, block the specific boma type
-          const bomaName = booking.bungalowNumber || "Argyle";
+          // Use unitName if available (new schema), fallback to bungalowNumber (old schema)
+          const bomaName = booking.unitName || booking.bungalowNumber || "Argyle";
           const bomaFieldMap: Record<string, string> = {
             "Argyle": "bomaBlocked",
             "Platform": "platformBlocked",
@@ -278,8 +296,7 @@ export const updateStatus = mutation({
           }
         } else if (booking.type === "cottage") {
           // For Cottages: block specific cottage type
-          // In schema we allow "Hornbill Cottage" as bungalowNumber for cottage type
-          const cottageName = booking.bungalowNumber; 
+          const cottageName = booking.unitName || booking.bungalowNumber; 
           const cottageFieldMap: Record<string, string> = {
              "Hornbill Cottage": "hornbillBlocked",
              "Francolin Cottage": "francolinBlocked",
@@ -408,7 +425,7 @@ export const remove = mutation({
 
         if (existing) {
           if (booking.type === "boma") {
-            const bomaName = booking.bungalowNumber || "Argyle";
+            const bomaName = booking.unitName || booking.bungalowNumber || "Argyle";
             const bomaFieldMap: Record<string, string> = {
               "Argyle": "bomaBlocked",
               "Platform": "platformBlocked",
@@ -419,7 +436,7 @@ export const remove = mutation({
               await ctx.db.patch(existing._id, { [blockedField]: false } as any);
             }
           } else if (booking.type === "cottage") {
-            const cottageName = booking.bungalowNumber || "Hornbill Cottage";
+            const cottageName = booking.unitName || booking.bungalowNumber || "Hornbill Cottage";
             const cottageFieldMap: Record<string, string> = {
               "Hornbill Cottage": "hornbillBlocked",
               "Francolin Cottage": "francolinBlocked",

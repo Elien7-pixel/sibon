@@ -61,7 +61,7 @@ const Admin = () => {
   };
 
   const computeTotalCost = (booking: Doc<"bookings">) => {
-    const { checkIn, checkOut, bomaDates, type, bungalowNumber } = booking;
+    const { checkIn, checkOut, bomaDates, type, unitName } = booking;
     if (!checkIn || !checkOut) return 0;
 
     const start = parseLocal(checkIn);
@@ -80,9 +80,9 @@ const Admin = () => {
       // Cottage pricing: flat nightly rate per cottage
       const nights = computeNights(checkIn, checkOut);
       let rate = 0;
-      if (bungalowNumber === "Hornbill Cottage") rate = 1200;
-      else if (bungalowNumber === "Francolin Cottage") rate = 2000;
-      else if (bungalowNumber === "Guineafowl Cottage") rate = 2500;
+      if (unitName === "Hornbill Cottage") rate = 1200;
+      else if (unitName === "Francolin Cottage") rate = 2000;
+      else if (unitName === "Guineafowl Cottage") rate = 2500;
       total += nights * rate;
     }
 
@@ -481,7 +481,7 @@ const Admin = () => {
           <img src="/ingwelala-logo.jpeg" alt="Ingwelala Logo" className="h-14 w-14 rounded-lg bg-white p-1 object-contain" />
           <div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            <p className="text-sm opacity-90 mt-1">Manage bookings and availability for Ingwelala Boma Booking</p>
+            <p className="text-sm opacity-90 mt-1">Manage bookings and availability for Ingwelala Booking</p>
           </div>
         </div>
       </header>
@@ -878,17 +878,20 @@ const Admin = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Guest Name</TableHead>
+                    <TableHead>Email</TableHead>
                     <TableHead>Cottage</TableHead>
+                    <TableHead>Bungalow No.</TableHead>
                     <TableHead>Check-in</TableHead>
                     <TableHead>Check-out</TableHead>
                     <TableHead>Total Price</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {cottageBookings.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                         No cottage bookings found
                       </TableCell>
                     </TableRow>
@@ -896,11 +899,13 @@ const Admin = () => {
                     cottageBookings.map((booking: Doc<"bookings">) => (
                       <TableRow key={booking._id}>
                         <TableCell className="font-medium">{booking.userName ?? "-"}</TableCell>
+                        <TableCell>{booking.userEmail ?? "-"}</TableCell>
+                        <TableCell>{booking.unitName ?? "-"}</TableCell>
                         <TableCell>{booking.bungalowNumber ?? "-"}</TableCell>
                         <TableCell>{formatDDMMYYYY(booking.checkIn)}</TableCell>
                         <TableCell>{formatDDMMYYYY(booking.checkOut)}</TableCell>
                         <TableCell>
-                          <div className="flex flex-col text-right">
+                          <div className="flex flex-col">
                             <span className="font-semibold text-hero-brown">R {computeTotalCost(booking).toLocaleString()}</span>
                             <span className="text-xs text-muted-foreground">{computeNights(booking.checkIn, booking.checkOut)} night(s)</span>
                           </div>
@@ -968,7 +973,7 @@ const Admin = () => {
                       </TableRow>
                     ))
                   )}
-                </TableBody>
+              </TableBody>
               </Table>
             </div>
           </div>
@@ -981,7 +986,9 @@ const Admin = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Guest Name</TableHead>
+                    <TableHead>Email</TableHead>
                     <TableHead>Boma</TableHead>
+                    <TableHead>Bungalow No.</TableHead>
                     <TableHead>Dates</TableHead>
                     <TableHead>Total Price</TableHead>
                     <TableHead>Status</TableHead>
@@ -998,7 +1005,7 @@ const Admin = () => {
                   ) : (
                     bomaBookings.map((booking: Doc<"bookings">) => {
                       const isBomaOnly = booking.type === "boma";
-                      const bomaName = isBomaOnly ? booking.bungalowNumber : "Argyle";
+                      const bomaName = booking.unitName || (isBomaOnly ? booking.bungalowNumber : "Argyle");
                       
                       // Calculate specific boma cost
                       let bomaCost = 0;
@@ -1026,14 +1033,15 @@ const Admin = () => {
                       return (
                         <TableRow key={booking._id}>
                           <TableCell className="font-medium">{booking.userName ?? "-"}</TableCell>
+                          <TableCell>{booking.userEmail ?? "-"}</TableCell>
                           <TableCell>{bomaName}</TableCell>
+                          <TableCell>{booking.bungalowNumber ?? "-"}</TableCell>
                           <TableCell className="max-w-xs break-words">{dateDisplay}</TableCell>
                           <TableCell>
-                            <div className="flex flex-col text-right">
-                              <span className="font-semibold text-hero-brown">R {bomaCost.toLocaleString()}</span>
-                              {/* <span className="text-xs text-muted-foreground">Per braai</span> */}
-                            </div>
-                          </TableCell>
+                          <div className="flex flex-col text-right">
+                            <span className="font-semibold text-hero-brown">R {bomaCost.toLocaleString()}</span>
+                          </div>
+                        </TableCell>
                           <TableCell>{getStatusBadge(booking.status)}</TableCell>
                           <TableCell>
                             <DropdownMenu>

@@ -177,36 +177,42 @@ const Index = () => {
               <p className="text-sm text-muted-foreground mb-4">Select which Boma you would like to book:</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div
-                  className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedBoma === "Argyle"
+                  className={`border-2 rounded-lg p-4 cursor-pointer transition-all h-full flex flex-col justify-between ${selectedBoma === "Argyle"
                     ? "border-orange-500 bg-orange-50 ring-2 ring-orange-200"
                     : "border-border bg-background hover:border-orange-300"
                     }`}
                   onClick={() => setSelectedBoma("Argyle")}
                 >
-                  <h3 className="font-semibold text-lg mb-2">Argyle Boma</h3>
-                  <p className="text-3xl font-bold text-orange-900">R 350<span className="text-lg font-normal text-muted-foreground">/day</span></p>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Argyle Boma</h3>
+                  </div>
+                  <p className="text-3xl font-bold text-orange-900 mt-2">R 350<span className="text-lg font-normal text-muted-foreground">/day</span></p>
                 </div>
 
                 <div
-                  className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedBoma === "Platform"
+                  className={`border-2 rounded-lg p-4 cursor-pointer transition-all h-full flex flex-col justify-between ${selectedBoma === "Platform"
                     ? "border-orange-500 bg-orange-50 ring-2 ring-orange-200"
                     : "border-border bg-background hover:border-orange-300"
                     }`}
                   onClick={() => setSelectedBoma("Platform")}
                 >
-                  <h3 className="font-semibold text-lg mb-2">The Platform</h3>
-                  <p className="text-3xl font-bold text-orange-900">R 600<span className="text-lg font-normal text-muted-foreground">/night</span></p>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">The Platform</h3>
+                  </div>
+                  <p className="text-3xl font-bold text-orange-900 mt-2">R 600<span className="text-lg font-normal text-muted-foreground">/night</span></p>
                 </div>
 
                 <div
-                  className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedBoma === "Beacon"
+                  className={`border-2 rounded-lg p-4 cursor-pointer transition-all h-full flex flex-col justify-between ${selectedBoma === "Beacon"
                     ? "border-orange-500 bg-orange-50 ring-2 ring-orange-200"
                     : "border-border bg-background hover:border-orange-300"
                     }`}
                   onClick={() => setSelectedBoma("Beacon")}
                 >
-                  <h3 className="font-semibold text-lg mb-2">Beacon Boma</h3>
-                  <p className="text-3xl font-bold text-orange-900">R 500<span className="text-lg font-normal text-muted-foreground">/night</span></p>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Beacon Boma</h3>
+                  </div>
+                  <p className="text-3xl font-bold text-orange-900 mt-2">R 500<span className="text-lg font-normal text-muted-foreground">/night</span></p>
                 </div>
             </div>
             </>
@@ -220,15 +226,16 @@ const Index = () => {
                   return (
                     <div
                       key={key}
-                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedCottage === key
+                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all h-full flex flex-col justify-between ${selectedCottage === key
                         ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200"
                         : "border-border bg-background hover:border-emerald-300"}
                       `}
                       onClick={() => setSelectedCottage(key)}
                     >
-                      <h3 className="font-semibold text-lg mb-1">{cfg.name}</h3>
-                      <p className="text-sm text-muted-foreground mb-1">Max guests: {cfg.maxGuests}</p>
-                      <p className="text-2xl font-bold text-emerald-900">R {cfg.rate.toLocaleString()}<span className="text-lg font-normal text-muted-foreground">/night</span></p>
+                      <div>
+                        <h3 className="font-semibold text-lg mb-2">{cfg.name}</h3>
+                      </div>
+                      <p className="text-3xl font-bold text-emerald-900 mt-2">R {cfg.rate.toLocaleString()}<span className="text-lg font-normal text-muted-foreground">/night</span></p>
                     </div>
                   );
                 })}
@@ -238,9 +245,6 @@ const Index = () => {
           <div className="mt-4 pt-4 border-t border-border space-y-1 text-sm text-muted-foreground">
             {bookingType === "bungalow" && (
               <p>• Flat rate for up to 16 guests</p>
-            )}
-            {bookingType === "cottage" && (
-              <p>• Nightly rate per cottage, see above (max guests per cottage apply)</p>
             )}
             <p>• Admin approval required for all bookings</p>
             <p>• Payment confirmation required before dates are reserved</p>
@@ -308,7 +312,7 @@ const Index = () => {
                       <p className="text-sm text-muted-foreground mb-4">{cfg.description}</p>
                       <div className="mt-auto pt-4 border-t border-border">
                         <p className="font-semibold text-primary">
-                          Cost: R{cfg.rate.toLocaleString()}.00 <span className="font-normal text-muted-foreground">- per night (max {cfg.maxGuests} guests)</span>
+                          Cost: R{cfg.rate.toLocaleString()}.00 <span className="font-normal text-muted-foreground">- per night</span>
                         </p>
                       </div>
                     </>

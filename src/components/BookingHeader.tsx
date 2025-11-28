@@ -18,7 +18,7 @@ const BookingHeader = () => {
               className="h-14 w-14 md:h-16 md:w-16 rounded-lg bg-white p-1 object-contain"
             />
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold">Ingwelala Boma Booking</h1>
+              <h1 className="text-2xl md:text-3xl font-bold">Ingwelala Booking</h1>
               <p className="text-sm md:text-base opacity-90">Book your exclusive Boma experience</p>
             </div>
           </div>

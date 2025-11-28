@@ -29,6 +29,7 @@ type Props = {
 const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBomaDatesChange, type = "boma", selectedBoma = "Argyle", selectedCottage }: Props) => {
   const [notes, setNotes] = useState("");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [bungalowNumber, setBungalowNumber] = useState("");
   const [userType, setUserType] = useState<"owner" | "registered">("owner");
   const [submitting, setSubmitting] = useState(false);
@@ -84,7 +85,11 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
       toast.error("Please enter your name");
       return;
     }
-    if (type === "bungalow" && !bungalowNumber) {
+    if (!email) {
+      toast.error("Please enter your email");
+      return;
+    }
+    if (!bungalowNumber) {
       toast.error("Please enter your bungalow number");
       return;
     }
@@ -94,14 +99,16 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
       await createBooking({
         checkIn,
         checkOut,
-        bungalowNumber:
+        bungalowNumber,
+        unitName:
           type === "boma"
             ? selectedBoma
             : type === "cottage" && cottageName
             ? cottageName
-            : bungalowNumber,
+            : undefined,
         userType,
         notes: notes || undefined,
+        userEmail: email,
         userName: name,
         bomaDates,
         type
@@ -186,27 +193,33 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
           <Input id="name" type="text" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} className="bg-background" required />
         </div>
 
+        <div>
+          <label htmlFor="email" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
+            <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+            Email
+          </label>
+          <Input id="email" type="email" placeholder="your@email.com" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-background" required />
+        </div>
+
+        <div>
+          <label htmlFor="bungalowNumber" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
+            <Home className="h-4 w-4 mr-2 text-muted-foreground" />
+            Bungalow Number
+          </label>
+          <Input
+            id="bungalowNumber"
+            type="text"
+            placeholder="e.g., B12"
+            value={bungalowNumber}
+            onChange={(e) => setBungalowNumber(e.target.value)}
+            className="bg-background"
+            required
+          />
+        </div>
+
         {type === "boma" || type === "cottage" ? (
           <></>
         ) : (
-          <div>
-            <label htmlFor="bungalowNumber" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
-              <Home className="h-4 w-4 mr-2 text-muted-foreground" />
-              Bungalow Number
-            </label>
-            <Input
-              id="bungalowNumber"
-              type="text"
-              placeholder="e.g., B12"
-              value={bungalowNumber}
-              onChange={(e) => setBungalowNumber(e.target.value)}
-              className="bg-background"
-              required
-            />
-          </div>
-        )}
-
-        {type === "bungalow" && (
           <div>
             <label htmlFor="userType" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
               <Shield className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -223,21 +236,6 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
             </Select>
           </div>
         )}
-
-        <div>
-          <label htmlFor="notes" className="flex items-center text-sm font-medium text-foreground/70 mb-1">
-            <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
-            Note (optional)
-          </label>
-          <Textarea
-            id="notes"
-            placeholder="e.g., late arrival, special requests"
-            rows={3}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="bg-background resize-none"
-          />
-        </div>
 
         <Button
           type="submit"
@@ -275,7 +273,7 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
             {type === "boma" ? (
               <>
                 <div className="flex justify-between"><span className="text-muted-foreground">Boma</span><span className="font-medium">{selectedBoma}</span></div>
-                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Dates</span><span className="font-medium">{formatDDMMYYYY(parseLocalDate(checkIn))} - {formatDDMMYYYY(parseLocalDate(checkOut))}</span></div>
+                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Date</span><span className="font-medium">{formatDDMMYYYY(parseLocalDate(checkIn))}</span></div>
                 <div className="flex justify-between mt-1"><span className="text-muted-foreground">Total Cost</span><span className="font-medium text-primary">R {((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)) * 350}</span></div>
               </>
             ) : (

@@ -6,7 +6,8 @@ export default defineSchema({
     userId: v.string(),
     userEmail: v.optional(v.string()),
     userName: v.optional(v.string()),
-    bungalowNumber: v.optional(v.string()), // User's bungalow number or unit name (for bomas/cottages)
+    bungalowNumber: v.optional(v.string()), // User's bungalow number (e.g. B12)
+    unitName: v.optional(v.string()), // The resource being booked (e.g. "Argyle Boma", "Hornbill Cottage")
     type: v.optional(
       v.union(
         v.literal("bungalow"),
