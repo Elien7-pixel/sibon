@@ -190,6 +190,9 @@ const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}
     }
 
     if (day.available === 0) {
+      if (bookingType === "cottage") {
+        return "bg-orange-800 rounded-lg p-2 text-center text-white cursor-not-allowed";
+      }
       return "bg-gray-500 rounded-lg p-2 text-center text-white cursor-not-allowed";
     }
 
@@ -344,7 +347,7 @@ const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}
       {/* Legend */}
       <div className="mt-4 flex flex-wrap gap-4 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-gray-500"></div>
+          <div className={`w-4 h-4 rounded ${bookingType === "cottage" ? "bg-orange-800" : "bg-gray-500"}`}></div>
           <span className="text-muted-foreground">Unavailable</span>
         </div>
         {bookingType === "bungalow" && (
