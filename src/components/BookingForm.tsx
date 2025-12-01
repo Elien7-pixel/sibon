@@ -274,7 +274,7 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
               <>
                 <div className="flex justify-between"><span className="text-muted-foreground">Boma</span><span className="font-medium">{selectedBoma}</span></div>
                 <div className="flex justify-between mt-1"><span className="text-muted-foreground">Date</span><span className="font-medium">{formatDDMMYYYY(parseLocalDate(checkIn))}</span></div>
-                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Total Cost</span><span className="font-medium text-primary">R {((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)) * 350}</span></div>
+                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Total Cost</span><span className="font-medium text-primary">R {((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)) * (selectedBoma === "Argyle" ? 350 : selectedBoma === "Platform" ? 600 : 500)}</span></div>
               </>
             ) : (
               <>
@@ -294,6 +294,14 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
                       : bungalowNumber}
                   </span>
                 </div>
+                {type === "cottage" && (
+                  <div className="flex justify-between mt-1">
+                    <span className="text-muted-foreground">Total Cost</span>
+                    <span className="font-medium text-primary">
+                      R {((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)) * (selectedCottage === "Hornbill" ? 1200 : selectedCottage === "Francolin" ? 2000 : 2500)}
+                    </span>
+                  </div>
+                )}
                 {type === "bungalow" && (
                   <div className="flex justify-between mt-1"><span className="text-muted-foreground">Status</span><span className="font-medium">{userType === "owner" ? "Owner" : "Registered User"}</span></div>
                 )}

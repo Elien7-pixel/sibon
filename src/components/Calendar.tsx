@@ -190,7 +190,7 @@ const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}
     }
 
     if (day.available === 0) {
-      return "bg-gray-300 rounded-lg p-2 text-center text-muted-foreground cursor-not-allowed";
+      return "bg-gray-500 rounded-lg p-2 text-center text-white cursor-not-allowed";
     }
 
     const isInRange = isSelected(day.date);
@@ -217,6 +217,11 @@ const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}
     if (isInRange) {
       if (bookingType === "boma") {
         classes += "bg-orange-400 hover:bg-orange-500 text-white rounded-lg ";
+      } else if (bookingType === "cottage") {
+        classes += "bg-gray-600 hover:bg-gray-700 text-white ";
+        if (isStart) classes += "rounded-l-lg ring-2 ring-gray-700 ";
+        if (isEnd) classes += "rounded-r-lg ring-2 ring-gray-700 ";
+        if (isStart && isEnd) classes += "rounded-lg ";
       } else {
         classes += "bg-green-200 hover:bg-green-300 ";
         if (isStart) classes += "rounded-l-lg ring-2 ring-green-500 ";
@@ -339,7 +344,7 @@ const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}
       {/* Legend */}
       <div className="mt-4 flex flex-wrap gap-4 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-gray-300"></div>
+          <div className="w-4 h-4 rounded bg-gray-500"></div>
           <span className="text-muted-foreground">Unavailable</span>
         </div>
         {bookingType === "bungalow" && (
