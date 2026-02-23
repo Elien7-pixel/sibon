@@ -11,6 +11,7 @@
 import type * as admin from "../admin.js";
 import type * as availability from "../availability.js";
 import type * as bookings from "../bookings.js";
+import type * as emails from "../emails.js";
 
 import type {
   ApiFromModules,
@@ -18,35 +19,28 @@ import type {
   FunctionReference,
 } from "convex/server";
 
-declare const fullApi: ApiFromModules<{
-  admin: typeof admin;
-  availability: typeof availability;
-  bookings: typeof bookings;
-}>;
-
 /**
- * A utility for referencing Convex functions in your app's public API.
+ * A utility for referencing Convex functions in your app's API.
  *
  * Usage:
  * ```js
  * const myFunctionReference = api.myModule.myFunction;
  * ```
  */
+declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
+  availability: typeof availability;
+  bookings: typeof bookings;
+  emails: typeof emails;
+}>;
+declare const fullApiWithMounts: typeof fullApi;
+
 export declare const api: FilterApi<
-  typeof fullApi,
+  typeof fullApiWithMounts,
   FunctionReference<any, "public">
 >;
-
-/**
- * A utility for referencing Convex functions in your app's internal API.
- *
- * Usage:
- * ```js
- * const myFunctionReference = internal.myModule.myFunction;
- * ```
- */
 export declare const internal: FilterApi<
-  typeof fullApi,
+  typeof fullApiWithMounts,
   FunctionReference<any, "internal">
 >;
 

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { isPeakSeason } from "@/utils/southAfricanHolidays";
@@ -69,7 +69,7 @@ const Admin = () => {
     let total = 0;
 
     if (!type || type === "bungalow") {
-      // Sibon bungalow pricing: peak / low season per night
+      // Bungalow pricing: peak / low season per night
       const cur = new Date(start);
       while (cur < end) {
         const dateStr = toISO(cur);
@@ -105,6 +105,7 @@ const Admin = () => {
 
   const isConfigured = useQuery(api.admin.isConfigured, {});
   const setAdminKeyMutation = useMutation(api.admin.setAdminKey);
+  const sendEmail = useAction(api.emails.sendNotification);
 
   const maxCapacity = settings?.maxCapacity ?? 16;
 
@@ -141,6 +142,18 @@ const Admin = () => {
         return;
       }
       await approve({ id, status: "approved", adminKey: adminKey ?? undefined });
+      
+      // Send approval email
+      const booking = bookings?.find(b => b._id === id);
+      if (booking?.userEmail && booking?.userName) {
+        sendEmail({
+          type: "booking_approved",
+          name: booking.userName,
+          email: booking.userEmail,
+          details: `${booking.unitName || "Booking"}, Check-in: ${booking.checkIn}`,
+        }).catch(() => {});
+      }
+      
       toast.success("Booking approved successfully");
     } catch (error: any) {
       console.error(error);

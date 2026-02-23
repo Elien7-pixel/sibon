@@ -23,7 +23,7 @@ const BookingHeader = () => {
             </div>
           </div>
           <a 
-            href="https://ingwelala.co.za/about/sibon.html" 
+            href="https://ingwelala.co.za" 
             target="_blank" 
             rel="noopener noreferrer"
             className="hidden md:inline-block text-white font-semibold py-2 px-4 border border-white rounded-lg hover:bg-white hover:text-foreground transition-colors"

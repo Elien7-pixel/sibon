@@ -22,7 +22,7 @@ const SignUp = () => {
             <h1 className="text-3xl font-bold">Ingwelala Booking</h1>
           </div>
 
-          <h2 className="text-4xl font-bold mb-4">Welcome to Ingwelala</h2>
+          <h2 className="text-4xl font-bold mb-4 whitespace-nowrap">Welcome to Ingwelala</h2>
           <p className="text-lg opacity-90 mb-6">Your perfect bush getaway awaits. Book your Boma experience today.</p>
           <div className="space-y-3 text-sm">
             <div className="flex items-start space-x-3">

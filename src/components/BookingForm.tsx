@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Calendar, Home, FileText, Shield, CheckCircle, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
 type Props = {
@@ -33,10 +33,11 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
   const [bungalowNumber, setBungalowNumber] = useState("");
   const [userType, setUserType] = useState<"owner" | "registered">("owner");
   const [submitting, setSubmitting] = useState(false);
-  const [successOpen, setSuccessOpen] = useState(false);
   const [manualCheckIn, setManualCheckIn] = useState("");
+  const navigate = useNavigate();
   const [manualCheckOut, setManualCheckOut] = useState("");
   const createBooking = useMutation(api.bookings.createBooking);
+  const sendEmail = useAction(api.emails.sendNotification);
   const settings = useQuery(api.availability.getSettings, {});
 
   const parseLocalDate = (value: string) => {
@@ -113,12 +114,18 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
         bomaDates,
         type
       });
-      toast.success("Booking request submitted!", {
-        description: "An admin will review your request shortly.",
-      });
-      setNotes("");
-      onBomaDatesChange([]);
-      setSuccessOpen(true);
+      // Send email notification (fire and forget)
+      sendEmail({
+        type: "booking_request",
+        name,
+        email,
+        details: type === "boma" 
+          ? `Boma: ${selectedBoma}, Date: ${checkIn}` 
+          : `Cottage: ${selectedCottage || "N/A"}, Check-in: ${checkIn}, Check-out: ${checkOut}`,
+      }).catch(() => {}); // Don't block on email failure
+
+      // Redirect to confirmation page (prevents double-submit)
+      navigate(`/booking-confirmed?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`);
     } catch (e: unknown) {
       console.error(e);
       const message = e instanceof Error ? e.message : "Failed to submit booking";
@@ -253,78 +260,7 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
           </div>
         </div>
       </form>
-      {/* Success Splash */}
-      <Dialog open={successOpen} onOpenChange={setSuccessOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-available-foreground" />
-              {type === "boma" ? "Boma Request Sent" : type === "cottage" ? "Cottage Booking Request Sent" : "Booking Request Sent"}
-            </DialogTitle>
-            <DialogDescription>
-              {type === "boma"
-                ? `Thanks ${name || ""}! Your Boma request has been received and will be reviewed shortly.`
-                : type === "cottage"
-                ? `Thanks ${name || ""}! Your cottage booking request has been received and will be reviewed shortly.`
-                : `Thanks ${name || ""}! We’ve received your request and an admin will review it shortly.`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="bg-secondary rounded-md p-4 text-sm">
-            {type === "boma" ? (
-              <>
-                <div className="flex justify-between"><span className="text-muted-foreground">Boma</span><span className="font-medium">{selectedBoma}</span></div>
-                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Date</span><span className="font-medium">{formatDDMMYYYY(parseLocalDate(checkIn))}</span></div>
-                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Total Cost</span><span className="font-medium text-primary">R {((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)) * (selectedBoma === "Argyle" ? 350 : selectedBoma === "Platform" ? 600 : 500)}</span></div>
-              </>
-            ) : (
-              <>
-                <div className="flex justify-between"><span className="text-muted-foreground">Arrival</span><span className="font-medium">{formatDDMMYYYY(parseLocalDate(checkIn))}</span></div>
-                <div className="flex justify-between mt-1"><span className="text-muted-foreground">Departure</span><span className="font-medium">{formatDDMMYYYY(parseLocalDate(checkOut))}</span></div>
-                <div className="flex justify-between mt-1">
-                  <span className="text-muted-foreground">Cottage</span>
-                  <span className="font-medium">
-                    {type === "cottage"
-                      ? (selectedCottage === "Hornbill"
-                          ? "Hornbill Cottage"
-                          : selectedCottage === "Francolin"
-                          ? "Francolin Cottage"
-                          : selectedCottage === "Guineafowl"
-                          ? "Guineafowl Cottage"
-                          : "Cottage")
-                      : bungalowNumber}
-                  </span>
-                </div>
-                {type === "cottage" && (
-                  <div className="flex justify-between mt-1">
-                    <span className="text-muted-foreground">Total Cost</span>
-                    <span className="font-medium text-primary">
-                      R {((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)) * (selectedCottage === "Hornbill" ? 1200 : selectedCottage === "Francolin" ? 2000 : 2500)}
-                    </span>
-                  </div>
-                )}
-                {type === "bungalow" && (
-                  <div className="flex justify-between mt-1"><span className="text-muted-foreground">Status</span><span className="font-medium">{userType === "owner" ? "Owner" : "Registered User"}</span></div>
-                )}
-                {bomaDates.length > 0 && (
-                  <div className="flex justify-between mt-1">
-                    <span className="text-muted-foreground">Argyle Boma</span>
-                    <span className="font-medium text-primary">{bomaDates.length} night(s) requested</span>
-                  </div>
-                )}
-              </>
-            )}
-            {notes && (
-              <div className="mt-2">
-                <div className="text-muted-foreground">Note</div>
-                <div className="font-medium whitespace-pre-wrap">{notes}</div>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setSuccessOpen(false)} className="bg-hero-brown hover:bg-hero-brown/90">Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Success dialog removed — now redirects to /booking-confirmed */}
     </div>
   );
 };

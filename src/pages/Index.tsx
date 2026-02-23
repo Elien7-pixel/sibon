@@ -105,7 +105,7 @@ const Index = () => {
         let available = value.available;
 
         if (bookingType === "boma" || bookingType === "cottage") {
-           // If it's boma or cottage, we reset available to max first (ignoring Sibon block),
+           // If it's boma or cottage, we reset available to max first,
            // then apply specific block.
            available = settings?.maxCapacity ?? 16;
            

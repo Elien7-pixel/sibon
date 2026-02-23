@@ -139,7 +139,7 @@ const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}
       const isPast = currentDay < todayStart;
       const available = isPast ? 0 : (typeof dayData === 'number' ? dayData : (dayData?.available ?? maxCapacity));
 
-      // Determine season using SA holidays logic (Sibon only)
+      // Determine season using SA holidays logic
       let seasonType: "peak" | "offpeak" | undefined = typeof dayData === 'object' ? dayData?.seasonType : undefined;
 
       if (!seasonType && !isPast && bookingType === "bungalow") {
@@ -267,7 +267,7 @@ const Calendar = ({ selectedRange, onChangeSelectedRange, availabilityByDay = {}
       return nightsCount * cottageNightlyRate;
     }
 
-    // Default Sibon bungalow pricing (peak / low season)
+    // Default bungalow pricing (peak / low season)
     let total = 0;
     while (current < end) {
       const dateStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
