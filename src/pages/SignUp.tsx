@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import ImageSlideshow from "@/components/ImageSlideshow";
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -13,8 +12,8 @@ const SignUp = () => {
     <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left side - Branding with Slideshow */}
       <div className="lg:w-1/2 relative bg-hero-brown text-white overflow-hidden">
-        <ImageSlideshow />
-        <div className="absolute inset-0 bg-hero-brown/60 z-10" />
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/images/ingwelala-hero.jpg')" }} />
+        <div className="absolute inset-0 bg-hero-brown/50 z-10" />
 
         <div className="relative z-20 max-w-md p-8 lg:p-12 flex flex-col justify-center min-h-screen">
           <div className="flex items-center space-x-3 mb-6">
