@@ -173,6 +173,18 @@ const Admin = () => {
         return;
       }
       await approve({ id, status: "rejected", adminKey: adminKey ?? undefined });
+      
+      // Send rejection email
+      const booking = bookings?.find(b => b._id === id);
+      if (booking?.userEmail && booking?.userName) {
+        sendEmail({
+          type: "booking_rejected" as any,
+          name: booking.userName,
+          email: booking.userEmail,
+          details: `${booking.unitName || "Booking"}, Check-in: ${booking.checkIn}`,
+        }).catch(() => {});
+      }
+      
       toast.success("Booking rejected");
     } catch (error: any) {
       console.error(error);

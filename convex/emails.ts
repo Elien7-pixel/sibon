@@ -6,7 +6,7 @@ import { v } from "convex/values";
 
 export const sendNotification = action({
   args: {
-    type: v.union(v.literal("booking_request"), v.literal("booking_approved")),
+    type: v.union(v.literal("booking_request"), v.literal("booking_approved"), v.literal("booking_rejected")),
     name: v.string(),
     email: v.string(),
     details: v.string(),
