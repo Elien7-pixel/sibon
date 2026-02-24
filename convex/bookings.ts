@@ -408,62 +408,59 @@ export const remove = mutation({
       return; 
     }
 
-    // If booking was approved or confirmed, we need to unblock the availability
-    if (["approved", "confirmed"].includes(booking.status)) {
-      const checkIn = new Date(booking.checkIn);
-      const checkOut = new Date(booking.checkOut);
+    // Always unblock availability when a booking is deleted, regardless of status
+    const checkIn = new Date(booking.checkIn);
+    const checkOut = new Date(booking.checkOut);
 
-      for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        const dateStr = `${y}-${m}-${day}`;
+    for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const dateStr = `${y}-${m}-${day}`;
+      const existing = await ctx.db
+        .query("availability")
+        .withIndex("by_date", (q) => q.eq("date", dateStr))
+        .unique();
+
+      if (existing) {
+        if (booking.type === "boma") {
+          const bomaName = booking.unitName || booking.bungalowNumber || "Argyle";
+          const bomaFieldMap: Record<string, string> = {
+            "Argyle": "bomaBlocked",
+            "Platform": "platformBlocked",
+            "Beacon": "beaconBlocked"
+          };
+          const blockedField = bomaFieldMap[bomaName];
+          if (blockedField) {
+            await ctx.db.patch(existing._id, { [blockedField]: false } as any);
+          }
+        } else if (booking.type === "cottage") {
+          const cottageName = booking.unitName || booking.bungalowNumber || "Hornbill Cottage";
+          const cottageFieldMap: Record<string, string> = {
+            "Hornbill Cottage": "hornbillBlocked",
+            "Francolin Cottage": "francolinBlocked",
+            "Guineafowl Cottage": "guineafowlBlocked"
+          };
+          const blockedField = cottageFieldMap[cottageName];
+          if (blockedField) {
+            await ctx.db.patch(existing._id, { [blockedField]: false } as any);
+          }
+        } else if (!booking.type || booking.type === "bungalow") {
+          const maxCapacity = settings?.value?.maxCapacity ?? 16;
+          await ctx.db.patch(existing._id, { available: maxCapacity, blocked: false });
+        }
+      }
+    }
+
+    // Also unblock add-on Boma dates
+    if (booking.bomaDates && booking.bomaDates.length > 0) {
+      for (const dateStr of booking.bomaDates) {
         const existing = await ctx.db
           .query("availability")
           .withIndex("by_date", (q) => q.eq("date", dateStr))
           .unique();
-
         if (existing) {
-          if (booking.type === "boma") {
-            const bomaName = booking.unitName || booking.bungalowNumber || "Argyle";
-            const bomaFieldMap: Record<string, string> = {
-              "Argyle": "bomaBlocked",
-              "Platform": "platformBlocked",
-              "Beacon": "beaconBlocked"
-            };
-            const blockedField = bomaFieldMap[bomaName];
-            if (blockedField) {
-              await ctx.db.patch(existing._id, { [blockedField]: false } as any);
-            }
-          } else if (booking.type === "cottage") {
-            const cottageName = booking.unitName || booking.bungalowNumber || "Hornbill Cottage";
-            const cottageFieldMap: Record<string, string> = {
-              "Hornbill Cottage": "hornbillBlocked",
-              "Francolin Cottage": "francolinBlocked",
-              "Guineafowl Cottage": "guineafowlBlocked"
-            };
-            const blockedField = cottageFieldMap[cottageName];
-            if (blockedField) {
-              await ctx.db.patch(existing._id, { [blockedField]: false } as any);
-            }
-          } else if (!booking.type || booking.type === "bungalow") {
-            // For main Sibon bungalow bookings, unblock accommodation
-            const maxCapacity = settings?.value?.maxCapacity ?? 16;
-            await ctx.db.patch(existing._id, { available: maxCapacity, blocked: false });
-          }
-        }
-      }
-
-      // Also unblock add-on Boma dates
-      if (booking.bomaDates && booking.bomaDates.length > 0) {
-        for (const dateStr of booking.bomaDates) {
-          const existing = await ctx.db
-            .query("availability")
-            .withIndex("by_date", (q) => q.eq("date", dateStr))
-            .unique();
-          if (existing) {
-            await ctx.db.patch(existing._id, { bomaBlocked: false });
-          }
+          await ctx.db.patch(existing._id, { bomaBlocked: false });
         }
       }
     }

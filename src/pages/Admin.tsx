@@ -18,7 +18,7 @@ const Admin = () => {
   const [selectedBooking, setSelectedBooking] = useState<Doc<"bookings"> | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCalendarDialogOpen, setIsCalendarDialogOpen] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(new Date(2025, 10)); // November 2025
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [maxCapacityLocal, setMaxCapacityLocal] = useState<number>(16);
   const [calendarMode, setCalendarMode] = useState<"boma" | "cottage">("boma");
@@ -1274,17 +1274,6 @@ const Admin = () => {
                     </div>
                   </>
                 )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-guests">Number of Guests</Label>
-                <Input
-                  id="edit-guests"
-                  type="number"
-                  value={selectedBooking.guests}
-                  onChange={(e) => setSelectedBooking({ ...selectedBooking, guests: parseInt(e.target.value) })}
-                  min="1"
-                  max={maxCapacity}
-                />
               </div>
             </div>
           )}
