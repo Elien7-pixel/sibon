@@ -40,3 +40,18 @@ export const verifyAdminKey = query({
     return stored === adminKey;
   },
 });
+
+export const updateAdminKey = mutation({
+  args: { currentKey: v.string(), newKey: v.string() },
+  handler: async (ctx, { currentKey, newKey }) => {
+    const settings = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "global"))
+      .unique();
+    const stored = settings?.value?.adminKey;
+    if (!stored || stored !== currentKey) throw new Error("Forbidden");
+    await ctx.db.patch(settings!._id, {
+      value: { ...(settings!.value ?? {}), adminKey: newKey },
+    });
+  },
+});

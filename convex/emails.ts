@@ -1,8 +1,12 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 
-// Set this in Convex environment variables: GOOGLE_SCRIPT_URL
-// Deploy your Google Apps Script as a web app and paste the URL here
+// Sends booking notifications via a Pipedream HTTP workflow that uses the
+// Microsoft Outlook (M365) integration to deliver mail.
+//
+// Set EMAIL_WEBHOOK_URL in Convex env vars to the Pipedream HTTP trigger URL.
+// The webhook receives: { type, name, email, details } and is expected to
+// branch on `type` to send the appropriate Outlook email.
 
 export const sendNotification = action({
   args: {
@@ -12,22 +16,22 @@ export const sendNotification = action({
     details: v.string(),
   },
   handler: async (_ctx, { type, name, email, details }) => {
-    const scriptUrl = process.env.GOOGLE_SCRIPT_URL;
-    if (!scriptUrl) {
-      console.warn("[Email] GOOGLE_SCRIPT_URL not configured — skipping email");
-      return { sent: false, reason: "no_script_url" };
+    const webhookUrl = process.env.EMAIL_WEBHOOK_URL;
+    if (!webhookUrl) {
+      console.warn("[Email] EMAIL_WEBHOOK_URL not configured — skipping email");
+      return { sent: false, reason: "no_webhook_url" };
     }
 
     try {
-      const response = await fetch(scriptUrl, {
+      const response = await fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type, name, email, details }),
       });
 
       if (!response.ok) {
-        console.error(`[Email] Google Script returned ${response.status}`);
-        return { sent: false, reason: "script_error" };
+        console.error(`[Email] Webhook returned ${response.status}`);
+        return { sent: false, reason: "webhook_error" };
       }
 
       console.log(`[Email] Sent ${type} notification to ${email}`);

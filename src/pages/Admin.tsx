@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { useMutation, useQuery, useAction } from "convex/react";
+import { useMutation, useQuery, useAction, useConvex } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { isPeakSeason } from "@/utils/southAfricanHolidays";
@@ -102,10 +102,50 @@ const Admin = () => {
   const setDateAvailability = useMutation(api.availability.setDateAvailability);
 
   const [adminKey, setAdminKeyLocal] = useState<string | null>(localStorage.getItem("adminKey") || null);
+  const [authenticated, setAuthenticated] = useState<boolean>(
+    localStorage.getItem("adminAuthenticated") === "true"
+  );
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
 
+  const convex = useConvex();
   const isConfigured = useQuery(api.admin.isConfigured, {});
-  const setAdminKeyMutation = useMutation(api.admin.setAdminKey);
   const sendEmail = useAction(api.emails.sendNotification);
+
+  const handleLogin = async () => {
+    setLoginLoading(true);
+    try {
+      if (loginUsername.trim().toLowerCase() !== "admin") {
+        toast.error("Invalid credentials");
+        return;
+      }
+      const ok = await convex.query(api.admin.verifyAdminKey, { adminKey: loginPassword });
+      if (!ok) {
+        toast.error("Invalid credentials");
+        return;
+      }
+      localStorage.setItem("adminKey", loginPassword);
+      localStorage.setItem("adminAuthenticated", "true");
+      setAdminKeyLocal(loginPassword);
+      setAuthenticated(true);
+      setLoginPassword("");
+      toast.success("Signed in");
+    } catch (e: any) {
+      toast.error(e?.message || "Login failed");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("adminKey");
+    localStorage.removeItem("adminAuthenticated");
+    setAdminKeyLocal(null);
+    setAuthenticated(false);
+    setLoginUsername("");
+    setLoginPassword("");
+  };
 
   const maxCapacity = settings?.maxCapacity ?? 16;
 
@@ -178,7 +218,7 @@ const Admin = () => {
       const booking = bookings?.find(b => b._id === id);
       if (booking?.userEmail && booking?.userName) {
         sendEmail({
-          type: "booking_rejected" as any,
+          type: "booking_rejected",
           name: booking.userName,
           email: booking.userEmail,
           details: `${booking.unitName || "Booking"}, Check-in: ${booking.checkIn}`,
@@ -498,61 +538,74 @@ const Admin = () => {
   };
 
 
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-sm bg-card border rounded-lg shadow-lg p-8">
+          <div className="text-center mb-6">
+            <img
+              src="/ingwelala-logo.jpeg"
+              alt="Ingwelala"
+              className="h-16 w-16 mx-auto rounded-lg bg-white p-1 object-contain mb-3"
+            />
+            <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+            <p className="text-sm text-muted-foreground mt-1">Sign in to continue</p>
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleLogin();
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <Label htmlFor="login-username">Username</Label>
+              <Input
+                id="login-username"
+                type="text"
+                autoComplete="username"
+                value={loginUsername}
+                onChange={(e) => setLoginUsername(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="login-password">Password</Label>
+              <Input
+                id="login-password"
+                type="password"
+                autoComplete="current-password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loginLoading}>
+              {loginLoading ? "Signing in…" : "Sign in"}
+            </Button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-hero-brown text-white p-6 shadow-lg">
         <div className="max-w-7xl mx-auto flex items-center space-x-4">
           <img src="/ingwelala-logo.jpeg" alt="Ingwelala Logo" className="h-14 w-14 rounded-lg bg-white p-1 object-contain" />
-          <div>
+          <div className="flex-1">
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
             <p className="text-sm opacity-90 mt-1">Manage bookings and availability for Ingwelala Booking</p>
           </div>
+          <Button variant="outline" size="sm" onClick={handleLogout} className="text-foreground">
+            Log out
+          </Button>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Admin key prompt */}
-        <div className="mb-4 bg-card p-4 rounded-md border">
-          {isConfigured ? (
-            <div className="flex gap-2 items-center">
-              <input
-                type="password"
-                placeholder="Enter admin key"
-                className="border rounded px-3 py-2 w-64"
-                onChange={(e) => setAdminKeyLocal(e.target.value)}
-              />
-              <Button
-                onClick={() => {
-                  if (adminKey) {
-                    localStorage.setItem("adminKey", adminKey);
-                    toast.success("Admin key saved locally");
-                  }
-                }}
-              >
-                Save
-              </Button>
-            </div>
-          ) : (
-            <div className="flex gap-2 items-center">
-              <input
-                type="password"
-                placeholder="Set new admin key"
-                className="border rounded px-3 py-2 w-64"
-                onChange={(e) => setAdminKeyLocal(e.target.value)}
-              />
-              <Button
-                onClick={async () => {
-                  if (!adminKey) return;
-                  await setAdminKeyMutation({ adminKey });
-                  toast.success("Admin key configured");
-                }}
-              >
-                Configure
-              </Button>
-            </div>
-          )}
-        </div>
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-card p-6 rounded-lg shadow-md border-l-4 border-accent">
