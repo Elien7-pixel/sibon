@@ -119,9 +119,9 @@ const BookingForm = ({ year, month, selectedRange, onDateChange, bomaDates, onBo
         type: "booking_request",
         name,
         email,
-        details: type === "boma" 
-          ? `Boma: ${selectedBoma}, Date: ${checkIn}` 
-          : `Cottage: ${selectedCottage || "N/A"}, Check-in: ${checkIn}, Check-out: ${checkOut}`,
+        details: type === "boma"
+          ? `Boma: ${selectedBoma}, Bungalow: ${bungalowNumber}, Date: ${checkIn}`
+          : `Cottage: ${selectedCottage || "N/A"}, Bungalow: ${bungalowNumber}, Check-in: ${checkIn}, Check-out: ${checkOut}`,
       }).catch(() => {}); // Don't block on email failure
 
       // Redirect to confirmation page (prevents double-submit)

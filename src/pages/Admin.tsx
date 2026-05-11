@@ -186,11 +186,12 @@ const Admin = () => {
       // Send approval email
       const booking = bookings?.find(b => b._id === id);
       if (booking?.userEmail && booking?.userName) {
+        const unitLabel = booking.type === "boma" ? "Boma" : booking.type === "cottage" ? "Cottage" : "Unit";
         sendEmail({
           type: "booking_approved",
           name: booking.userName,
           email: booking.userEmail,
-          details: `${booking.unitName || "Booking"}, Check-in: ${booking.checkIn}`,
+          details: `${unitLabel}: ${booking.unitName || booking.bungalowNumber || "Booking"}, Bungalow: ${booking.bungalowNumber ?? "-"}, Check-in: ${booking.checkIn}, Check-out: ${booking.checkOut}`,
         }).catch(() => {});
       }
       
@@ -217,11 +218,12 @@ const Admin = () => {
       // Send rejection email
       const booking = bookings?.find(b => b._id === id);
       if (booking?.userEmail && booking?.userName) {
+        const unitLabel = booking.type === "boma" ? "Boma" : booking.type === "cottage" ? "Cottage" : "Unit";
         sendEmail({
           type: "booking_rejected",
           name: booking.userName,
           email: booking.userEmail,
-          details: `${booking.unitName || "Booking"}, Check-in: ${booking.checkIn}`,
+          details: `${unitLabel}: ${booking.unitName || booking.bungalowNumber || "Booking"}, Bungalow: ${booking.bungalowNumber ?? "-"}, Check-in: ${booking.checkIn}, Check-out: ${booking.checkOut}`,
         }).catch(() => {});
       }
       
@@ -366,46 +368,62 @@ const Admin = () => {
     switch (status) {
       case "approved":
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-600 text-white">
             <CheckCircle className="w-3 h-3 mr-1" />
             Approved
           </span>
         );
       case "payment_requested":
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500 text-white">
             <DollarSign className="w-3 h-3 mr-1" />
             Payment Requested
           </span>
         );
       case "payment_received":
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-600 text-white">
             <Check className="w-3 h-3 mr-1" />
             Payment Received
           </span>
         );
       case "confirmed":
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-700 text-white">
             <CheckCircle className="w-3 h-3 mr-1" />
             Confirmed
           </span>
         );
       case "rejected":
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-600 text-white">
             <XCircle className="w-3 h-3 mr-1" />
             Rejected
           </span>
         );
       case "pending":
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/30 text-accent-foreground">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-400 text-yellow-950">
             <CalendarIcon className="w-3 h-3 mr-1" />
             Pending
           </span>
         );
+    }
+  };
+
+  const getRowClassName = (status: string) => {
+    switch (status) {
+      case "approved":
+      case "confirmed":
+      case "payment_requested":
+      case "payment_received":
+        return "bg-green-50 hover:bg-green-100";
+      case "pending":
+        return "bg-yellow-50 hover:bg-yellow-100";
+      case "rejected":
+        return "bg-red-50 hover:bg-red-100";
+      default:
+        return "";
     }
   };
 
@@ -751,30 +769,49 @@ const Admin = () => {
               }
 
               const dateAvail = availability[day.date];
-              const isAccommodationBlocked = dateAvail?.blocked || dateAvail?.available === 0;
-              
-              let isBlocked = false;
+
+              let isManuallyBlocked = false;
               if (calendarMode === "boma") {
                 const bomaFieldMap: Record<string, string> = {
                   "Argyle": "bomaBlocked",
                   "Platform": "platformBlocked",
                   "Beacon": "beaconBlocked"
                 };
-                const blockedField = bomaFieldMap[selectedBoma] || "bomaBlocked";
-                isBlocked = (dateAvail as any)?.[blockedField];
+                isManuallyBlocked = (dateAvail as any)?.[bomaFieldMap[selectedBoma] || "bomaBlocked"];
               } else if (calendarMode === "cottage") {
                 const cottageFieldMap: Record<string, string> = {
                   "Hornbill Cottage": "hornbillBlocked",
                   "Francolin Cottage": "francolinBlocked",
                   "Guineafowl Cottage": "guineafowlBlocked"
                 };
-                const blockedField = cottageFieldMap[selectedCottage] || "hornbillBlocked";
-                isBlocked = (dateAvail as any)?.[blockedField];
+                isManuallyBlocked = (dateAvail as any)?.[cottageFieldMap[selectedCottage] || "hornbillBlocked"];
               }
 
-              const bgColor = isBlocked 
-                ? (calendarMode === "boma" ? "bg-orange-200" : "bg-emerald-200")
-                : (calendarMode === "boma" ? "bg-background border border-orange-100 hover:bg-orange-50" : "bg-background border border-emerald-100 hover:bg-emerald-50");
+              const selectedUnit = calendarMode === "boma" ? selectedBoma : selectedCottage;
+              const overlappingBookings = (bookings ?? []).filter((b) =>
+                b.type === calendarMode &&
+                b.unitName === selectedUnit &&
+                b.status !== "rejected" &&
+                day.date >= b.checkIn &&
+                day.date < b.checkOut
+              );
+              const hasApproved = overlappingBookings.some((b) =>
+                ["approved", "confirmed", "payment_requested", "payment_received"].includes(b.status)
+              );
+              const hasPending = overlappingBookings.some((b) => b.status === "pending");
+
+              let cellState: "approved" | "pending" | "available" = "available";
+              if (hasApproved || isManuallyBlocked) cellState = "approved";
+              else if (hasPending) cellState = "pending";
+
+              const bgColor =
+                cellState === "approved"
+                  ? "bg-green-200"
+                  : cellState === "pending"
+                  ? "bg-yellow-200"
+                  : (calendarMode === "boma"
+                      ? "bg-background border border-orange-100 hover:bg-orange-50"
+                      : "bg-background border border-emerald-100 hover:bg-emerald-50");
 
               return (
                 <button
@@ -783,8 +820,8 @@ const Admin = () => {
                   className={`p-3 text-center rounded-lg transition-all hover:ring-2 hover:ring-primary cursor-pointer ${bgColor}`}
                 >
                   <div className="font-semibold">{day.day}</div>
-                  {isBlocked && (
-                    <div className={`text-xs mt-1 flex items-center justify-center ${calendarMode === "boma" ? "text-orange-700" : "text-emerald-700"}`}>
+                  {cellState === "approved" && (
+                    <div className="text-xs mt-1 flex items-center justify-center text-green-800">
                       <Lock className="h-3 w-3" />
                     </div>
                   )}
@@ -794,30 +831,19 @@ const Admin = () => {
           </div>
 
           <div className="mt-6 pt-4 border-t border-border flex items-center justify-between text-sm">
-            <div className="flex items-center gap-6">
-              {calendarMode === "boma" ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded border border-orange-100 bg-background" />
-                    <span>Available</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-orange-200" />
-                    <span>Boma Booked/Blocked</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded border border-emerald-100 bg-background" />
-                    <span>Available</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-emerald-200" />
-                    <span>Cottage Booked/Blocked</span>
-                  </div>
-                </>
-              )}
+            <div className="flex items-center gap-6 flex-wrap">
+              <div className="flex items-center gap-2">
+                <div className={`w-4 h-4 rounded ${calendarMode === "boma" ? "border border-orange-100" : "border border-emerald-100"} bg-background`} />
+                <span>Available</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-yellow-200" />
+                <span>Pending</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-green-200" />
+                <span>Approved / Blocked</span>
+              </div>
             </div>
           </div>
         </div>
@@ -861,7 +887,7 @@ const Admin = () => {
                     </TableRow>
                   ) : (
                     accommodationBookings.map((booking: Doc<"bookings">) => (
-                      <TableRow key={booking._id}>
+                      <TableRow key={booking._id} className={getRowClassName(booking.status)}>
                         <TableCell className="font-medium">{booking.userName ?? "-"}</TableCell>
                         <TableCell>
                           {booking.bungalowNumber ?? "-"}
@@ -975,7 +1001,7 @@ const Admin = () => {
                     </TableRow>
                   ) : (
                     cottageBookings.map((booking: Doc<"bookings">) => (
-                      <TableRow key={booking._id}>
+                      <TableRow key={booking._id} className={getRowClassName(booking.status)}>
                         <TableCell className="font-medium">{booking.userName ?? "-"}</TableCell>
                         <TableCell>{booking.userEmail ?? "-"}</TableCell>
                         <TableCell>{booking.unitName ?? "-"}</TableCell>
@@ -1109,7 +1135,7 @@ const Admin = () => {
                       }
 
                       return (
-                        <TableRow key={booking._id}>
+                        <TableRow key={booking._id} className={getRowClassName(booking.status)}>
                           <TableCell className="font-medium">{booking.userName ?? "-"}</TableCell>
                           <TableCell>{booking.userEmail ?? "-"}</TableCell>
                           <TableCell>{bomaName}</TableCell>
