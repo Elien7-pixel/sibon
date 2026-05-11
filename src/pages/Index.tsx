@@ -5,8 +5,6 @@ import BookingForm from "@/components/BookingForm";
 
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { BookingTypeToggle } from "@/components/BookingTypeToggle";
 
 const Index = () => {
@@ -145,12 +143,6 @@ const Index = () => {
       <BookingHeader />
 
       <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div className="flex justify-end mb-4">
-          <Button asChild variant="outline">
-            <Link to="/admin">Go to Admin</Link>
-          </Button>
-        </div>
-
         <div className="flex justify-center mb-6">
           <BookingTypeToggle value={bookingType} onChange={setBookingType} />
         </div>
