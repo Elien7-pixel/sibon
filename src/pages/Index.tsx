@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import BookingHeader from "@/components/BookingHeader";
 import Calendar from "@/components/Calendar";
 import BookingForm from "@/components/BookingForm";
+import ImageSlideshow from "@/components/ImageSlideshow";
 
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -69,7 +70,7 @@ const Index = () => {
       rate: 1200,
       maxGuests: 2,
       description:
-        "This guest cottage is available to Ingwelala Members only. It is an open plan rondavel with two single beds and small kitchen/dining area. There is a seperate bathroom with shower & toilet facilities. A braai is provided on the outside patio.",
+        "This guest cottage is available to Ingwelala Members only. It is an open plan rondavel with two single beds and small kitchen/dining area. There is a separate bathroom with shower & toilet facilities. A braai is provided on the outside patio.",
     },
     Francolin: {
       name: "Francolin Cottage",
@@ -85,6 +86,16 @@ const Index = () => {
       description:
         "This guest cottage is available to Ingwelala Members only. One room offers a queen bed with en suite bathroom (bath & toilet). The other room has four single beds with a bathroom (shower & toilet). Facilities include a kitchen, dining area and gazebo.",
     },
+  };
+
+  // Per-facility photos sourced from the Ingwelala NightsBridge listing (book.nightsbridge.com/16455)
+  const facilityPhotos: Record<string, string[]> = {
+    Argyle: ["/images/argyle-1.jpg", "/images/argyle-2.jpg", "/images/argyle-3.jpg", "/images/argyle-4.jpg"],
+    Platform: ["/images/platform-1.jpg", "/images/platform-2.jpg", "/images/platform-3.jpg", "/images/platform-4.jpg", "/images/platform-5.jpg"],
+    Beacon: ["/images/beacon-1.jpg", "/images/beacon-2.jpg", "/images/beacon-3.jpg", "/images/beacon-4.jpg"],
+    Hornbill: ["/images/hornbill-1.jpg", "/images/hornbill-2.jpg", "/images/hornbill-3.jpg", "/images/hornbill-4.jpg", "/images/hornbill-5.jpg"],
+    Francolin: ["/images/francolin-1.jpg", "/images/francolin-2.jpg", "/images/francolin-3.jpg", "/images/francolin-4.jpg", "/images/francolin-5.jpg"],
+    Guineafowl: ["/images/guineafowl-1.jpg", "/images/guineafowl-2.jpg", "/images/guineafowl-3.jpg", "/images/guineafowl-4.jpg", "/images/guineafowl-5.jpg", "/images/guineafowl-6.jpg", "/images/guineafowl-7.jpg"],
   };
 
   const settings = useQuery(api.availability.getSettings, {});
@@ -292,6 +303,11 @@ const Index = () => {
                     </div>
                   </>
                 )}
+                <ImageSlideshow
+                  key={selectedBoma}
+                  images={facilityPhotos[selectedBoma]}
+                  className="aspect-[16/9] mt-4"
+                />
               </div>
             )}
             {bookingType === "cottage" && (
@@ -310,6 +326,11 @@ const Index = () => {
                     </>
                   );
                 })()}
+                <ImageSlideshow
+                  key={selectedCottage}
+                  images={facilityPhotos[selectedCottage]}
+                  className="aspect-[16/9] mt-4"
+                />
               </div>
             )}
 

@@ -18,19 +18,22 @@ const BookingHeader = () => {
               className="h-14 w-14 md:h-16 md:w-16 rounded-lg bg-white p-1 object-contain"
             />
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold">Ingwelala Booking</h1>
-              <p className="text-sm md:text-base opacity-90">Book your exclusive Boma experience</p>
+              <h1 className="text-2xl md:text-3xl font-bold">Ingwelala Bookings</h1>
+              <p className="text-sm md:text-base opacity-90">Book your exclusive Ingwelala experience</p>
             </div>
           </div>
-          <a 
-            href="https://ingwelala.co.za" 
-            target="_blank" 
+          <a
+            href="https://ingwelala.co.za"
+            target="_blank"
             rel="noopener noreferrer"
             className="hidden md:inline-block text-white font-semibold py-2 px-4 border border-white rounded-lg hover:bg-white hover:text-foreground transition-colors"
           >
             Visit Site
           </a>
         </div>
+        <p className="mt-5 bg-amber-400 text-amber-950 font-bold text-center text-base md:text-xl uppercase tracking-wide rounded-lg py-2.5 px-4 shadow-md">
+          For Ingwelala Members only
+        </p>
       </div>
     </header>
   );
